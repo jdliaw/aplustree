@@ -54,7 +54,8 @@ RC BTLeafNode::insert(int key, const RecordId& rid) {
   char* p;
 
   // LOCATE where to insert this key
-  rc = locate(key, &eid);
+  rc = locate(key, eid);
+  int j = eid * ENTRY_SIZE; // j = index to insert at
 
   // CASE: Inserting in the middle
   if (eid < numKeys) {
@@ -63,9 +64,6 @@ RC BTLeafNode::insert(int key, const RecordId& rid) {
       buffer[i] = buffer[i - ENTRY_SIZE];
     }
   }
-
-  // Now just insert at j
-  int j = eid * ENTRY_SIZE;
 
   // First append the key
   p = (char*) &key; // p == first byte of key
@@ -103,10 +101,15 @@ RC BTLeafNode::insert(int key, const RecordId& rid) {
  */
 RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
                               BTLeafNode& sibling, int& siblingKey) {
+  if (sibling is not empty) {
+    return RC_INVALID_ATTRIBUTE; // TODO: what to return if sibling node is not empty?
+  }
+
   // Do insert as before
   RC rc;
   int eid;
-  rc = locate(key, &eid);
+  rc = locate(key, eid);
+  int j = eid * ENTRY_SIZE;
 
   if (eid < numKeys) {
     for (int i = ENTRY_SIZE * (MAX_NODE_SIZE + 1); i >= j; i--) {
@@ -114,7 +117,6 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
     }
   }
 
-  int j = eid * ENTRY_SIZE;
   char* p = (char*) &key;
   for (int i = 0; i < KEY_SIZE; i++) {
     buffer[j] = (*p);
@@ -131,11 +133,34 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
     p++;
     j++;
   }
-  numKeys++;
+  numKeys++; // End insert
 
+  // Split the keys
+  int middle = (numKeys / 2) + 1; // How many go in the left node (not sibling)
+  // start at eid = middle (bc index)
+  RecordId siblingRID;
+  RecordId rid;
+  int key;
 
+  // Insert records by eid from middle to last key (numKeys) into sibling
+  for (int i = middle; i < numKeys; i++) {
+    rc = readEntry(i, key, rid);
+    sibling.insert(key, rid);
 
-  return 0;
+    // update first key of sibling
+    if (i == middle) {
+      siblingKey = key;
+      siblingRID = rid;
+    }
+  }
+
+  // update numKeys
+  sibling.numKeys = numKeys - middle;
+  numKeys = middle;
+  // update siblingID
+  siblingPID = siblingRID.pid;
+
+  return rc;
 }
 
 /**
@@ -157,12 +182,12 @@ RC BTLeafNode::locate(int searchKey, int& eid) {
   RecordId rid;
 
   while (numEntries <= numKeys) {
-    rc = readEntry(curEntry, &key, &rid);
-    if (key == searchKey) {
+    rc = readEntry(curEntry, key, rid);
+    if (searchKey == key) {
       eid = curEntry;
       return 0; // Found searchKey
     }
-    else if (key < searchKey) { // If less, keep searching
+    else if (searchKey < key) { // If less, keep searching
       curEntry++;
       numEntries++;
     }
@@ -205,16 +230,19 @@ RC BTLeafNode::readEntry(int eid, int& key, RecordId& rid) {
  * Return the pid of the next slibling node.
  * @return the PageId of the next sibling node
  */
-PageId BTLeafNode::getNextNodePtr()
-{ return 0; }
+PageId BTLeafNode::getNextNodePtr() {
+  return siblingID;
+}
 
 /*
  * Set the pid of the next slibling node.
  * @param pid[IN] the PageId of the next sibling node
  * @return 0 if successful. Return an error code if there is an error.
  */
-RC BTLeafNode::setNextNodePtr(PageId pid)
-{ return 0; }
+RC BTLeafNode::setNextNodePtr(PageId pid) {
+  pid = pid;
+  return 0;
+}
 
 /*
  * Read the content of the node from the page pid in the PageFile pf.
