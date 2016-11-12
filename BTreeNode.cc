@@ -7,6 +7,7 @@ BTLeafNode::BTLeafNode() {
   // initialize member variables
   numKeys = 0;
   lastIndex = 0;
+  sibling = NULL;
 }
 
 /*
@@ -52,8 +53,17 @@ RC BTLeafNode::insert(int key, const RecordId& rid) {
   // key = int (4 bytes), rid = PageId (int, 4) + int (4)
 
   int j = lastIndex; // append to last index used
-  char* p = (char*) &rid.pid; // p == first byte of rid.pid
+  char* p = (char*) &key; // p == first byte of key
 
+  // First append the key
+  for (int i = 0; i < KEY_SIZE; i++) {
+    buffer[j] = (*p);
+    p++;
+    j++;
+  }
+
+  // Now append record id
+  p = (char*) &rid.pid;
   for (int i = 0; i < RID_SIZE; i++) {
     // After first 4 bytes, move onto the sid
     if (i == 4) {
@@ -64,16 +74,8 @@ RC BTLeafNode::insert(int key, const RecordId& rid) {
     j++;
   }
 
-  // Now append the key
-  p = (char*) &key;
-  for (int i = 0; i < KEY_SIZE; i++) {
-    buffer[j] = (*p);
-    p++;
-    j++;
-  }
-
   // Update member variables
-  lastIndex = j;
+  lastIndex = j + 1;
   numKeys++;
 
   return 0;
@@ -90,8 +92,11 @@ RC BTLeafNode::insert(int key, const RecordId& rid) {
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
-                              BTLeafNode& sibling, int& siblingKey)
-{ return 0; }
+                              BTLeafNode& sibling, int& siblingKey) {
+  // Create a new empty node to become sibling that we split with
+
+  return 0;
+}
 
 /**
  * If searchKey exists in the node, set eid to the index entry
@@ -104,8 +109,10 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
                    behind the largest key smaller than searchKey.
  * @return 0 if searchKey is found. Otherwise return an error code.
  */
-RC BTLeafNode::locate(int searchKey, int& eid)
-{ return 0; }
+RC BTLeafNode::locate(int searchKey, int& eid) {
+
+  return 0;
+}
 
 /*
  * Read the (key, rid) pair from the eid entry.
@@ -114,8 +121,23 @@ RC BTLeafNode::locate(int searchKey, int& eid)
  * @param rid[OUT] the RecordId from the entry
  * @return 0 if successful. Return an error code if there is an error.
  */
-RC BTLeafNode::readEntry(int eid, int& key, RecordId& rid)
-{ return 0; }
+RC BTLeafNode::readEntry(int eid, int& key, RecordId& rid) {
+  // eid = index of each entry in the node
+  // each entry = 12 bytes
+  for (int i = eid; i <= KEY_SIZE + RID_SIZE; i += 4) {
+    if (i == eid) {
+      key = (int)(buffer[i+3] << 24 | buffer[i+2] << 16 | buffer[i+1] << 8 | buffer[i]);
+    }
+    else if (i == eid+4) {
+      rid.pid = (int)(buffer[i+3] << 24 | buffer[i+2] << 16 | buffer[i+1] << 8 | buffer[i]);
+    }
+    else {
+      rid.sid = (int)(buffer[i+3] << 24 | buffer[i+2] << 16 | buffer[i+1] << 8 | buffer[i]);
+    }
+  }
+  // TODO: what error codes can dis have?
+  return 0;
+}
 
 /*
  * Return the pid of the next slibling node.

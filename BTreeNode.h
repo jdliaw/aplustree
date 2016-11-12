@@ -112,6 +112,7 @@ class BTLeafNode {
     char buffer[PageFile::PAGE_SIZE];
     int numKeys;
     int lastIndex;
+    BTLeafNode* sibling;
 };
 
 
