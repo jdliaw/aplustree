@@ -15,6 +15,7 @@
 
 const int KEY_SIZE = 4;
 const int RID_SIZE = 8;
+const int ENTRY_SIZE = 12;
 const int MAX_NODE_SIZE = 70;
 
 /**

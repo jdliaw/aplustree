@@ -110,8 +110,29 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
  * @return 0 if searchKey is found. Otherwise return an error code.
  */
 RC BTLeafNode::locate(int searchKey, int& eid) {
+  int numEntries = 0;
+  int curEntry = 0;
+  int key;
+  RecordId rid;
 
-  return 0;
+  while (numEntries <= numKeys) {
+    rc = readEntry(curEntry, &key, &rid);
+    if (key == searchKey) {
+      eid = curEntry;
+      return 0; // Found searchKey
+    }
+    else if (key < searchKey) { // If less, keep searching
+      curEntry += ENTRY_SIZE;
+      numEntries++;
+    }
+    else {
+      // If greater, we want to return the entry right after searchKey
+      eid = curEntry;
+      return RC_NO_SUCH_RECORD;
+    }
+  }
+
+  return RC_NO_SUCH_RECORD;
 }
 
 /*
@@ -124,7 +145,7 @@ RC BTLeafNode::locate(int searchKey, int& eid) {
 RC BTLeafNode::readEntry(int eid, int& key, RecordId& rid) {
   // eid = index of each entry in the node
   // each entry = 12 bytes
-  for (int i = eid; i <= KEY_SIZE + RID_SIZE; i += 4) {
+  for (int i = eid; i <= ENTRY_SIZE; i += 4) {
     if (i == eid) {
       key = (int)(buffer[i+3] << 24 | buffer[i+2] << 16 | buffer[i+1] << 8 | buffer[i]);
     }
