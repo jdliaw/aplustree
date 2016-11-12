@@ -49,13 +49,26 @@ RC BTLeafNode::insert(int key, const RecordId& rid) {
     return RC_NODE_FULL; // Return an error code if the node is full.
   }
 
-  // Append rid and key to buffer
-  // key = int (4 bytes), rid = PageId (int, 4) + int (4)
+  RC rc;
+  int eid;
+  char* p;
 
-  int j = lastIndex; // append to last index used
-  char* p = (char*) &key; // p == first byte of key
+  // LOCATE where to insert this key
+  rc = locate(key, &eid);
+
+  // CASE: Inserting in the middle
+  if (eid < numKeys) {
+    // Move everything back by one entry
+    for (int i = ENTRY_SIZE * MAX_NODE_SIZE; i >= j; i--) {
+      buffer[i] = buffer[i - ENTRY_SIZE];
+    }
+  }
+
+  // Now just insert at j
+  int j = eid * ENTRY_SIZE;
 
   // First append the key
+  p = (char*) &key; // p == first byte of key
   for (int i = 0; i < KEY_SIZE; i++) {
     buffer[j] = (*p);
     p++;
@@ -73,9 +86,6 @@ RC BTLeafNode::insert(int key, const RecordId& rid) {
     p++;
     j++;
   }
-
-  // Update member variables
-  lastIndex = j + 1;
   numKeys++;
 
   return 0;
@@ -93,7 +103,37 @@ RC BTLeafNode::insert(int key, const RecordId& rid) {
  */
 RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
                               BTLeafNode& sibling, int& siblingKey) {
-  // Create a new empty node to become sibling that we split with
+  // Do insert as before
+  RC rc;
+  int eid;
+  rc = locate(key, &eid);
+
+  if (eid < numKeys) {
+    for (int i = ENTRY_SIZE * (MAX_NODE_SIZE + 1); i >= j; i--) {
+      buffer[i] = buffer[i - ENTRY_SIZE];
+    }
+  }
+
+  int j = eid * ENTRY_SIZE;
+  char* p = (char*) &key;
+  for (int i = 0; i < KEY_SIZE; i++) {
+    buffer[j] = (*p);
+    p++;
+    j++;
+  }
+
+  p = (char*) &rid.pid;
+  for (int i = 0; i < RID_SIZE; i++) {
+    if (i == 4) {
+      p = (char*) &rid.sid;
+    }
+    buffer[j] = (*p);
+    p++;
+    j++;
+  }
+  numKeys++;
+
+
 
   return 0;
 }
@@ -110,6 +150,7 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
  * @return 0 if searchKey is found. Otherwise return an error code.
  */
 RC BTLeafNode::locate(int searchKey, int& eid) {
+  RC rc;
   int numEntries = 0;
   int curEntry = 0;
   int key;
@@ -122,7 +163,7 @@ RC BTLeafNode::locate(int searchKey, int& eid) {
       return 0; // Found searchKey
     }
     else if (key < searchKey) { // If less, keep searching
-      curEntry += ENTRY_SIZE;
+      curEntry++;
       numEntries++;
     }
     else {
@@ -131,8 +172,7 @@ RC BTLeafNode::locate(int searchKey, int& eid) {
       return RC_NO_SUCH_RECORD;
     }
   }
-
-  return RC_NO_SUCH_RECORD;
+  return rc;
 }
 
 /*
@@ -145,11 +185,12 @@ RC BTLeafNode::locate(int searchKey, int& eid) {
 RC BTLeafNode::readEntry(int eid, int& key, RecordId& rid) {
   // eid = index of each entry in the node
   // each entry = 12 bytes
-  for (int i = eid; i <= ENTRY_SIZE; i += 4) {
-    if (i == eid) {
+  int entryIndex = eid * ENTRY_SIZE;
+  for (int i = entryIndex; i <= entryIndex + ENTRY_SIZE; i += 4) {
+    if (i == entryIndex) {
       key = (int)(buffer[i+3] << 24 | buffer[i+2] << 16 | buffer[i+1] << 8 | buffer[i]);
     }
-    else if (i == eid+4) {
+    else if (i == entryIndex+4) {
       rid.pid = (int)(buffer[i+3] << 24 | buffer[i+2] << 16 | buffer[i+1] << 8 | buffer[i]);
     }
     else {
