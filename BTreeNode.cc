@@ -2,6 +2,13 @@
 
 using namespace std;
 
+// Constructor
+BTLeafNode::BTLeafNode() {
+  // initialize member variables
+  numKeys = 0;
+  lastIndex = 0;
+}
+
 /*
  * Read the content of the node from the page pid in the PageFile pf.
  * @param pid[IN] the PageId to read
@@ -18,15 +25,17 @@ RC BTLeafNode::read(PageId pid, const PageFile& pf) {
  * @param pf[IN] PageFile to write to
  * @return 0 if successful. Return an error code if there is an error.
  */
-RC BTLeafNode::write(PageId pid, PageFile& pf)
-{ return 0; }
+RC BTLeafNode::write(PageId pid, PageFile& pf) {
+  return pf.write(pid, &buffer);
+}
 
 /*
  * Return the number of keys stored in the node.
  * @return the number of keys in the node
  */
-int BTLeafNode::getKeyCount()
-{ return 0; }
+int BTLeafNode::getKeyCount() {
+  return numKeys;
+}
 
 /*
  * Insert a (key, rid) pair to the node.
@@ -34,8 +43,41 @@ int BTLeafNode::getKeyCount()
  * @param rid[IN] the RecordId to insert
  * @return 0 if successful. Return an error code if the node is full.
  */
-RC BTLeafNode::insert(int key, const RecordId& rid)
-{ return 0; }
+RC BTLeafNode::insert(int key, const RecordId& rid) {
+  if (getKeyCount() >= MAX_NODE_SIZE) {
+    return RC_NODE_FULL; // Return an error code if the node is full.
+  }
+
+  // Append rid and key to buffer
+  // key = int (4 bytes), rid = PageId (int, 4) + int (4)
+
+  int j = lastIndex; // append to last index used
+  char* p = (char*) &rid.pid; // p == first byte of rid.pid
+
+  for (int i = 0; i < RID_SIZE; i++) {
+    // After first 4 bytes, move onto the sid
+    if (i == 4) {
+      p = (char*) &rid.sid;
+    }
+    buffer[j] = (*p);
+    p++;
+    j++;
+  }
+
+  // Now append the key
+  p = (char*) &key;
+  for (int i = 0; i < KEY_SIZE; i++) {
+    buffer[j] = (*p);
+    p++;
+    j++;
+  }
+
+  // Update member variables
+  lastIndex = j;
+  numKeys++;
+
+  return 0;
+}
 
 /*
  * Insert the (key, rid) pair to the node
