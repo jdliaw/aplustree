@@ -15,7 +15,8 @@
 
 const int KEY_SIZE = 4;
 const int RID_SIZE = 8;
-const int ENTRY_SIZE = 12;
+const int LEAF_ENTRY_SIZE = 12;
+const int NON_LEAF_ENTRY_SIZE = 8;
 const int MAX_NODE_SIZE = 70; // 70 keys in a node
 
 /**
@@ -192,6 +193,9 @@ class BTNonLeafNode {
     * that contains the node.
     */
     char buffer[PageFile::PAGE_SIZE];
+    int numKeys;
+    int lastIndex;
+    PageId siblingPID;
 };
 
 #endif /* BTREENODE_H */
