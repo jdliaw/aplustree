@@ -175,28 +175,29 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
  * @return 0 if searchKey is found. Otherwise return an error code.
  */
 RC BTLeafNode::locate(int searchKey, int& eid) {
-  RC rc;
+  int rc = 0;
   int numEntries = 0;
   int curEntry = 0;
   int key;
   RecordId rid;
-
   while (numEntries <= numKeys) {
-    rc = readEntry(curEntry, key, rid);
-    if (searchKey == key) {
-      eid = curEntry;
-      return 0; // Found searchKey
-    }
-    else if (searchKey < key) { // If less, keep searching
-      curEntry++;
-      numEntries++;
-    }
-    else {
-      // If greater, we want to return the entry right after searchKey
-      eid = curEntry;
-      return RC_NO_SUCH_RECORD;
-    }
+      rc = readEntry(curEntry, key, rid);
+      if (key == searchKey) {
+          eid = curEntry;
+          return 0; // Found searchKey
+      }
+      else if (searchKey > key) { // If greater, keep searching
+          curEntry++;
+          numEntries++;
+      }
+      else {
+          // If less, we want to return the current entry
+          eid = curEntry;
+          return -1;
+      }
   }
+  // inserting at the end
+  eid = numKeys;
   return rc;
 }
 
