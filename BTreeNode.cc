@@ -491,13 +491,22 @@ RC BTNonLeafNode::locateChildPtr(int searchKey, PageId& pid) {
 RC BTNonLeafNode::initializeRoot(PageId pid1, int key, PageId pid2) {
   char* p;
   p = (char*) &pid1;
-  buffer[0] = (*p); // do u need to loop thru and assign every one????
+  for (int i = 0; i < sizeof(PageId); i++) {
+    buffer[i] = (*p);
+    p++;
+  }
 
   p = (char*) key;
-  buffer[KEY_SIZE] = (*p);
+  for (int i = sizeof(PageId); i < sizeof(PageId) + KEY_SIZE; i++) {
+    buffer[i] = (*p);
+    p++;
+  }
 
   p = char(*) pid2;
-  buffer[KEY_SIZE*2] = (*p);
+  for (int i = sizeof(PageId) + KEY_SIZE; i < sizeof(PageId) + (KEY_SIZE * 2); i++) {
+    buffer[i] = (*p);
+    p++;
+  }
 
   return 0;
 }
