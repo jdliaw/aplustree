@@ -345,11 +345,12 @@ RC BTNonLeafNode::readNonLeafEntry(int eid, int& key, PageId& pid) {
 }
 
 RC BTLeafNode::nonLeafLocate(int searchKey, int& eid) {
-  RC rc = 0;
+  RC rc;
   int numEntries = 0;
   int curEntry = 0;
   int key;
   PageId pid;
+
   while (numEntries <= numKeys) {
       rc = readNonLeafEntry(curEntry, key, pid);
       if (key == searchKey) {
@@ -466,7 +467,7 @@ RC BTNonLeafNode::locateChildPtr(int searchKey, PageId& pid) {
   while (numEntries <= numKeys) {
       rc = readNonLeafEntry(curEntry, key, entry_pid);
       if (key == searchKey) {
-          memcpy(&pid, traverse + curEntry + KEY_SIZE, sizeof(PageId));
+          memcpy(&pid, traverse + (curEntry * NON_LEAF_ENTRY_SIZE) + KEY_SIZE, sizeof(PageId));
           return 0; // Found searchKey
       }
       else { // If greater, keep searching
