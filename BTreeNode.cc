@@ -494,11 +494,14 @@ RC BTNonLeafNode::initializeRoot(PageId pid1, int key, PageId pid2) {
   p = (char*) &pid1;
   memcpy(&buffer, p, sizeof(PageId));
 
-  p = (char*) key;
-  memcpy(&buffer + sizeof(PageId), p, KEY_SIZE);
+  p = (char*) &key;
+  char* q = buffer;
+  q += sizeof(PageId);
+  memcpy(q, p, KEY_SIZE);
 
-  p = (char*) pid2;
-  memcpy(&buffer + (KEY_SIZE * 2), p, sizeof(PageId));
+  p = (char*) &pid2;
+  q += sizeof(key);
+  memcpy(q, p, sizeof(PageId));
 
   return 0;
 }
