@@ -324,7 +324,7 @@ RC BTNonLeafNode::insert(int key, PageId pid) {
   }
   numKeys++;
 
-  return 0;
+  return rc;
 }
 
 
@@ -345,7 +345,7 @@ RC BTNonLeafNode::readNonLeafEntry(int eid, int& key, PageId& pid) {
 }
 
 RC BTLeafNode::nonLeafLocate(int searchKey, int& eid) {
-  int rc = 0;
+  RC rc = 0;
   int numEntries = 0;
   int curEntry = 0;
   int key;
@@ -455,8 +455,30 @@ RC BTNonLeafNode::insertAndSplit(int key, PageId pid, BTNonLeafNode& sibling, in
  * @param pid[OUT] the pointer to the child node to follow.
  * @return 0 if successful. Return an error code if there is an error.
  */
-RC BTNonLeafNode::locateChildPtr(int searchKey, PageId& pid)
-{ return 0; }
+RC BTNonLeafNode::locateChildPtr(int searchKey, PageId& pid) {
+  RC rc = 0;
+  int numEntries = 0;
+  int curEntry = 0;
+  int key;
+  PageId entry_pid;
+  char* traverse = buffer;
+
+  while (numEntries <= numKeys) {
+      rc = readNonLeafEntry(curEntry, key, entry_pid);
+      if (key == searchKey) {
+          memcpy(&pid, traverse + curEntry + KEY_SIZE, sizeof(PageId));
+          return 0; // Found searchKey
+      }
+      else { // If greater, keep searching
+          curEntry++;
+          numEntries++;
+      }
+  }
+  // If not found, return error
+  rc = RC_NO_SUCH_RECORD;
+
+  return rc;
+}
 
 /*
  * Initialize the root node with (pid1, key, pid2).
@@ -468,11 +490,13 @@ RC BTNonLeafNode::locateChildPtr(int searchKey, PageId& pid)
 RC BTNonLeafNode::initializeRoot(PageId pid1, int key, PageId pid2) {
   char* p;
   p = (char*) &pid1;
-  buffer[0] = (*p);
+  buffer[0] = (*p); // do u need to loop thru and assign every one????
 
   p = (char*) key;
   buffer[KEY_SIZE] = (*p);
 
   p = char(*) pid2;
   buffer[KEY_SIZE*2] = (*p);
+
+  return 0;
 }
