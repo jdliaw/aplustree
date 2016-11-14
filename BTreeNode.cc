@@ -491,22 +491,13 @@ RC BTNonLeafNode::locateChildPtr(int searchKey, PageId& pid) {
 RC BTNonLeafNode::initializeRoot(PageId pid1, int key, PageId pid2) {
   char* p;
   p = (char*) &pid1;
-  for (int i = 0; i < sizeof(PageId); i++) {
-    buffer[i] = (*p);
-    p++;
-  }
+  memcpy(&buffer, p, sizeof(PageId));
 
   p = (char*) key;
-  for (int i = sizeof(PageId); i < sizeof(PageId) + KEY_SIZE; i++) {
-    buffer[i] = (*p);
-    p++;
-  }
+  memcpy(&buffer + sizeof(PageId), p, KEY_SIZE);
 
   p = char(*) pid2;
-  for (int i = sizeof(PageId) + KEY_SIZE; i < sizeof(PageId) + (KEY_SIZE * 2); i++) {
-    buffer[i] = (*p);
-    p++;
-  }
+  memcpy(&buffer + (KEY_SIZE * 2), p, sizeof(PageId));
 
   return 0;
 }
