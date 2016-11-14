@@ -67,15 +67,7 @@ RC BTLeafNode::insert(int key, const RecordId& rid) {
     }
   }
 
-  // First append the key
-  p = (char*) &key; // p == first byte of key
-  for (int i = 0; i < KEY_SIZE; i++) {
-    buffer[j] = (*p);
-    p++;
-    j++;
-  }
-
-  // Now append record id
+  // First append record id
   p = (char*) &rid.pid;
   for (int i = 0; i < RID_SIZE; i++) {
     // After first 4 bytes, move onto the sid
@@ -86,6 +78,15 @@ RC BTLeafNode::insert(int key, const RecordId& rid) {
     p++;
     j++;
   }
+
+  // Then append the key
+  p = (char*) &key; // p == first byte of key
+  for (int i = 0; i < KEY_SIZE; i++) {
+    buffer[j] = (*p);
+    p++;
+    j++;
+  }
+
   numKeys++;
 
   return 0;
@@ -119,19 +120,19 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
       buffer[i] = buffer[i - LEAF_ENTRY_SIZE];
     }
   }
-  //insert key
-  char* p = (char*) &key;
-  for (int i = 0; i < KEY_SIZE; i++) {
-    buffer[j] = (*p);
-    p++;
-    j++;
-  }
-  //insert record
-  p = (char*) &rid.pid;
+  // insert record id
+  char* p = (char*) &rid.pid;
   for (int i = 0; i < RID_SIZE; i++) {
     if (i == 4) {
       p = (char*) &rid.sid;
     }
+    buffer[j] = (*p);
+    p++;
+    j++;
+  }
+  // insert key
+  p = (char*) &key;
+  for (int i = 0; i < KEY_SIZE; i++) {
     buffer[j] = (*p);
     p++;
     j++;
@@ -199,7 +200,7 @@ RC BTLeafNode::locate(int searchKey, int& eid) {
       else {
           // If less, we want to return the current entry
           eid = curEntry;
-          return -1;
+          return RC_NO_SUCH_RECORD;
       }
   }
   // inserting at the end
@@ -220,13 +221,13 @@ RC BTLeafNode::readEntry(int eid, int& key, RecordId& rid) {
   int entryIndex = eid * LEAF_ENTRY_SIZE;
   for (int i = entryIndex; i < entryIndex + LEAF_ENTRY_SIZE; i += 4) {
     if (i == entryIndex) {
-      key = (int)(buffer[i+3] << 24 | buffer[i+2] << 16 | buffer[i+1] << 8 | buffer[i]);
-    }
-    else if (i == entryIndex+4) {
       rid.pid = (int)(buffer[i+3] << 24 | buffer[i+2] << 16 | buffer[i+1] << 8 | buffer[i]);
     }
-    else {
+    else if (i == entryIndex+4) {
       rid.sid = (int)(buffer[i+3] << 24 | buffer[i+2] << 16 | buffer[i+1] << 8 | buffer[i]);
+    }
+    else {
+      key = (int)(buffer[i+3] << 24 | buffer[i+2] << 16 | buffer[i+1] << 8 | buffer[i]);
     }
   }
   // TODO: what error codes can dis have?
@@ -306,18 +307,18 @@ RC BTNonLeafNode::insert(int key, PageId pid) {
     }
   }
 
-  // First append the key
-  p = (char*) &key; // p == first byte of key
+  // First append pid
+  p = (char*) &pid;
   for (int i = 0; i < KEY_SIZE; i++) {
+    // After first 4 bytes, move onto the sid
     buffer[j] = (*p);
     p++;
     j++;
   }
 
-  // Now append pid. (only one number b/c no rid)
-  p = (char*) &pid;
+  // Then append the key
+  p = (char*) &key; // p == first byte of key
   for (int i = 0; i < KEY_SIZE; i++) {
-    // After first 4 bytes, move onto the sid
     buffer[j] = (*p);
     p++;
     j++;
@@ -334,10 +335,10 @@ RC BTNonLeafNode::readNonLeafEntry(int eid, int& key, PageId& pid) {
   int entryIndex = eid * NON_LEAF_ENTRY_SIZE;
   for (int i = entryIndex; i < entryIndex + NON_LEAF_ENTRY_SIZE; i += 4) {
     if (i == entryIndex) {
-      key = (int)(buffer[i+3] << 24 | buffer[i+2] << 16 | buffer[i+1] << 8 | buffer[i]);
+      pid = (int)(buffer[i+3] << 24 | buffer[i+2] << 16 | buffer[i+1] << 8 | buffer[i]);
     }
     else if (i == entryIndex+4) {
-      pid = (int)(buffer[i+3] << 24 | buffer[i+2] << 16 | buffer[i+1] << 8 | buffer[i]);
+      key = (int)(buffer[i+3] << 24 | buffer[i+2] << 16 | buffer[i+1] << 8 | buffer[i]);
     }
   }
   // TODO: what error codes can dis have?
@@ -364,7 +365,7 @@ RC BTLeafNode::nonLeafLocate(int searchKey, int& eid) {
       else {
           // If less, we want to return the current entry
           eid = curEntry;
-          return -1;
+          return RC_NO_SUCH_RECORD;
       }
   }
   // inserting at the end
@@ -408,16 +409,16 @@ RC BTNonLeafNode::insertAndSplit(int key, PageId pid, BTNonLeafNode& sibling, in
     }
   }
 
-  //insert key
-  char* p = (char*) &key;
+  //insert record
+  char* p = (char*) &pid;
   for (int i = 0; i < KEY_SIZE; i++) {
     buffer[j] = (*p);
     p++;
     j++;
   }
 
-  //insert record
-  p = (char*) &pid;
+  //insert key
+  p = (char*) &key;
   for (int i = 0; i < KEY_SIZE; i++) {
     buffer[j] = (*p);
     p++;
