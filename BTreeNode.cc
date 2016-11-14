@@ -331,7 +331,7 @@ RC BTNonLeafNode::insert(int key, PageId pid) {
 RC BTNonLeafNode::readNonLeafEntry(int eid, int& key, PageId& pid) {
   // eid = index of each entry in the node
   // each entry = 12 bytes
-  int entryIndex = eid * LEAF_ENTRY_SIZE;
+  int entryIndex = eid * NON_LEAF_ENTRY_SIZE;
   for (int i = entryIndex; i <= entryIndex + LEAF_ENTRY_SIZE; i += 4) {
     if (i == entryIndex) {
       key = (int)(buffer[i+3] << 24 | buffer[i+2] << 16 | buffer[i+1] << 8 | buffer[i]);
