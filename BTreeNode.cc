@@ -425,35 +425,43 @@ RC BTNonLeafNode::insertAndSplit(int key, PageId pid, BTNonLeafNode& sibling, in
   numKeys++; // End insert
 
   // Split the keys
-  int middle = numKeys / 2 + 1;
-  int middle1 = numKeys / 2;            //1 - 35
-  int middle2 = (numKeys / 2) + 2;      //37 - 71
-  // int middle = (numKeys / 2) + 1; // How many go in the left node (not sibling)
-  // start at eid = middle (bc index)
-  
-  PageId siblingPid;
-  int key;
+    int middle = numKeys / 2 + 1;
+    int left = numKeys / 2;            //1 - 35
+    int right = (numKeys / 2) + 2;      //37 - 71
+    // int middle = (numKeys / 2) + 1; // How many go in the left node (not sibling)
+    // start at eid = middle (bc index)
+    cout << "middle: " << middle << ", left: " << left << ", right: " << right << endl;
+    
+    char* src = buffer + middle * NON_LEAF_ENTRY_SIZE;
+    std::memcpy(sibling.buffer, src, (numKeys-middle) * NON_LEAF_ENTRY_SIZE);
+    
+//    
+//    PageId siblingPid;
+//    int ins_key;
+//    
+//    // Insert records by eid from middle to last key (numKeys) into sibling
+//    for (int i = middle2; i < numKeys; i++) {
+//        rc = readNonLeafEntry(i, ins_key, siblingPid);
+//        sibling.insert(key, siblingPid);
+//        
+//    }
+//    
+    // TODO: How to send up to parent node?
+//    rc = readNonLeafEntry(middle, midKey, pid);   //the very middle key to be sent up to parent
+    
+    // update numKeys
+    sibling.numKeys = numKeys - middle;
+    numKeys = left;
+    
+    // clear the original node after the middle split
+    char* begin = &buffer[middle * NON_LEAF_ENTRY_SIZE];
+    char* end = begin + ((numKeys - middle) * NON_LEAF_ENTRY_SIZE);
+    std::fill(begin, end, 0);
+    
 
-  // Insert records by eid from middle to last key (numKeys) into sibling
-  for (int i = middle2; i < numKeys; i++) {
-    rc = readNonLeafEntry(i, key, siblingPid);
-    sibling.insert(key, siblingPid);
+    printStuff();
+    sibling.printStuff();
 
-  }
-
-  // TODO: How to send up to parent node?
-  rc = readNonLeafEntry(middle, midKey, pid)   //the very middle key to be sent up to parent
-
-  // update numKeys
-  sibling.numKeys = numKeys - middle2;
-  numKeys = middle1;
-
-  // clear the original node after the middle split
-  char* begin = &arr[middle * LEAF_ENTRY_SIZE];
-  char* end = begin + ((numKeys - middle) * LEAF_ENTRY_SIZE);
-  std::fill(begin, end, 0);
-
-  return rc;
 }
 
 /*
