@@ -1,4 +1,6 @@
 #include "BTreeNode.h"
+#include <iostream>
+#include <cstring>
 
 using namespace std;
 
@@ -7,7 +9,7 @@ BTLeafNode::BTLeafNode() {
   // initialize member variables
   numKeys = 0;
   lastIndex = 0;
-  sibling = NULL;
+  sibling = nullptr;
 }
 
 /*
@@ -17,7 +19,7 @@ BTLeafNode::BTLeafNode() {
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTLeafNode::read(PageId pid, const PageFile& pf) {
-  return pf.read(pid, &buffer);
+  return pf.read(pid, buffer);
 }
 
 /*
@@ -27,7 +29,7 @@ RC BTLeafNode::read(PageId pid, const PageFile& pf) {
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTLeafNode::write(PageId pid, PageFile& pf) {
-  return pf.write(pid, &buffer);
+  return pf.write(pid, buffer);
 }
 
 /*
@@ -109,21 +111,22 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
   RC rc;
   int eid;
   rc = locate(key, eid);
-  int j = eid * LEAF_ENTRY_SIZE;
+  int j = eid * LEAF_ENTRY_SIZE;    //insert here in buffer
 
+  //create space for insert
   if (eid < numKeys) {
     for (int i = LEAF_ENTRY_SIZE * (MAX_NODE_SIZE + 1); i >= j; i--) {
       buffer[i] = buffer[i - LEAF_ENTRY_SIZE];
     }
   }
-
+  //insert key
   char* p = (char*) &key;
   for (int i = 0; i < KEY_SIZE; i++) {
     buffer[j] = (*p);
     p++;
     j++;
   }
-
+  //insert record
   p = (char*) &rid.pid;
   for (int i = 0; i < RID_SIZE; i++) {
     if (i == 4) {
@@ -139,20 +142,23 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
   int middle = (numKeys / 2) + 1; // How many go in the left node (not sibling)
   // start at eid = middle (bc index)
   RecordId siblingRID;
-  RecordId rid;
-  int key;
+  RecordId ins_rid;
+  int ins_key;
+  
+  //Update first key of sibling, alternatively, memcpy?
+  // TODO: Check this...
+  rc = readEntry(middle, ins_key, ins_rid);
+  siblingKey = ins_key;
+  siblingRID = ins_rid;
+  
+  //Move the second half of this node to the first half of sibling node
+  char* src = buffer + middle*LEAF_ENTRY_SIZE;
+  std::memcpy(sibling.buffer, src, (numKeys-middle)*LEAF_ENTRY_SIZE);
 
-  // Insert records by eid from middle to last key (numKeys) into sibling
-  for (int i = middle; i < numKeys; i++) {
-    rc = readEntry(i, key, rid);
-    sibling.insert(key, rid);
-
-    // update first key of sibling
-    if (i == middle) {
-      siblingKey = key;
-      siblingRID = rid;
-    }
-  }
+  // Clear the second half of this node.
+  char* begin = &buffer[middle * LEAF_ENTRY_SIZE];
+  char* end = begin + ((numKeys - middle) * LEAF_ENTRY_SIZE);
+  std::fill(begin, end, 0);
 
   // update numKeys
   sibling.numKeys = numKeys - middle;
@@ -241,7 +247,7 @@ PageId BTLeafNode::getNextNodePtr() {
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTLeafNode::setNextNodePtr(PageId pid) {
-  siblingID = pid;
+  siblingPID = pid;
   return 0;
 }
 
@@ -252,7 +258,7 @@ RC BTLeafNode::setNextNodePtr(PageId pid) {
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTNonLeafNode::read(PageId pid, const PageFile& pf) { 
-  return pf.read(pid, &buffer);
+  return pf.read(pid, buffer);
 }
 
 /*
@@ -262,7 +268,7 @@ RC BTNonLeafNode::read(PageId pid, const PageFile& pf) {
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTNonLeafNode::write(PageId pid, PageFile& pf) {
-  return pf.write(pid, &buffer);
+  return pf.write(pid, buffer);
 }
 
 /*
@@ -321,6 +327,51 @@ RC BTNonLeafNode::insert(int key, PageId pid) {
   return 0;
 }
 
+
+RC BTNonLeafNode::readNonLeafEntry(int eid, int& key, PageId& pid) {
+  // eid = index of each entry in the node
+  // each entry = 12 bytes
+  int entryIndex = eid * LEAF_ENTRY_SIZE;
+  for (int i = entryIndex; i <= entryIndex + LEAF_ENTRY_SIZE; i += 4) {
+    if (i == entryIndex) {
+      key = (int)(buffer[i+3] << 24 | buffer[i+2] << 16 | buffer[i+1] << 8 | buffer[i]);
+    }
+    else if (i == entryIndex+4) {
+      pid = (int)(buffer[i+3] << 24 | buffer[i+2] << 16 | buffer[i+1] << 8 | buffer[i]);
+    }
+  }
+  // TODO: what error codes can dis have?
+  return 0;
+}
+
+RC BTLeafNode::nonLeafLocate(int searchKey, int& eid) {
+  int rc = 0;
+  int numEntries = 0;
+  int curEntry = 0;
+  int key;
+  PageId pid;
+  while (numEntries <= numKeys) {
+      rc = readNonLeafEntry(curEntry, key, pid);
+      if (key == searchKey) {
+          eid = curEntry;
+          return 0; // Found searchKey
+      }
+      else if (searchKey > key) { // If greater, keep searching
+          curEntry++;
+          numEntries++;
+      }
+      else {
+          // If less, we want to return the current entry
+          eid = curEntry;
+          return -1;
+      }
+  }
+  // inserting at the end
+  eid = numKeys;
+  return rc;
+}
+
+
 /*
  * Insert the (key, pid) pair to the node
  * and split the node half and half with sibling.
@@ -336,9 +387,73 @@ RC BTNonLeafNode::insert(int key, PageId pid) {
  * Insert and split:
  * Node is currently full. When inserting this node, we need to split the node
  * Node gets split down the middle, and the very middle element is discarded (moved up one level in B+Tree)
+ * 1st->35th, 36th, 37th-71st node. 36th node gets returned
  */
 RC BTNonLeafNode::insertAndSplit(int key, PageId pid, BTNonLeafNode& sibling, int& midKey) {
+  if (sibling.numKeys != 0) {
+    return RC_INVALID_ATTRIBUTE; // TODO: what to return if sibling node is not empty?
+  }
 
+  // Do insert as before
+  RC rc;
+  int eid;
+  rc = nonLeafLocate(key, eid);
+  int j = eid * NON_LEAF_ENTRY_SIZE;    //insert here in buffer
+
+  //create space for insert
+  if (eid < numKeys) {
+    for (int i = NON_LEAF_ENTRY_SIZE * (MAX_NODE_SIZE + 1); i >= j; i--) {
+      buffer[i] = buffer[i - NON_LEAF_ENTRY_SIZE];
+    }
+  }
+
+  //insert key
+  char* p = (char*) &key;
+  for (int i = 0; i < KEY_SIZE; i++) {
+    buffer[j] = (*p);
+    p++;
+    j++;
+  }
+
+  //insert record
+  p = (char*) &pid;
+  for (int i = 0; i < KEY_SIZE; i++) {
+    buffer[j] = (*p);
+    p++;
+    j++;
+  }
+  numKeys++; // End insert
+
+  // Split the keys
+  int middle = numKeys / 2 + 1;
+  int middle1 = numKeys / 2;            //1 - 35
+  int middle2 = (numKeys / 2) + 2;      //37 - 71
+  // int middle = (numKeys / 2) + 1; // How many go in the left node (not sibling)
+  // start at eid = middle (bc index)
+  
+  PageId siblingPid;
+  int key;
+
+  // Insert records by eid from middle to last key (numKeys) into sibling
+  for (int i = middle2; i < numKeys; i++) {
+    rc = readNonLeafEntry(i, key, siblingPid);
+    sibling.insert(key, siblingPid);
+
+  }
+
+  // TODO: How to send up to parent node?
+  rc = readNonLeafEntry(middle, midKey, pid)   //the very middle key to be sent up to parent
+
+  // update numKeys
+  sibling.numKeys = numKeys - middle2;
+  numKeys = middle1;
+
+  // clear the original node after the middle split
+  char* begin = &arr[middle * LEAF_ENTRY_SIZE];
+  char* end = begin + ((numKeys - middle) * LEAF_ENTRY_SIZE);
+  std::fill(begin, end, 0);
+
+  return rc;
 }
 
 /*

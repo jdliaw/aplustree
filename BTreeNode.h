@@ -114,6 +114,7 @@ class BTLeafNode {
     char buffer[PageFile::PAGE_SIZE];
     int numKeys;
     int lastIndex;
+    BTLeafNode* sibling;
     PageId siblingPID;
 };
 
@@ -131,6 +132,13 @@ class BTNonLeafNode {
     * @return 0 if successful. Return an error code if the node is full.
     */
     RC insert(int key, PageId pid);
+
+    /**
+    * readEntry but for pid instead of rid
+    */
+    RC readNonLeafEntry(int eid, int& key, PageId& pid);
+
+    RC nonLeafLocate(int searchKey, int& eid);
 
    /**
     * Insert the (key, pid) pair to the node
