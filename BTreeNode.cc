@@ -9,7 +9,7 @@ BTLeafNode::BTLeafNode() {
   // initialize member variables
   numKeys = 0;
   lastIndex = 0;
-  sibling = nullptr;
+  sibling = NULL;
 }
 
 /*
@@ -239,7 +239,7 @@ RC BTLeafNode::readEntry(int eid, int& key, RecordId& rid) {
  * @return the PageId of the next sibling node
  */
 PageId BTLeafNode::getNextNodePtr() {
-  return siblingID;
+  return siblingPID;
 }
 
 /*
@@ -296,7 +296,7 @@ RC BTNonLeafNode::insert(int key, PageId pid) {
   char* p;
 
   // LOCATE where to insert this key
-  rc = locate(key, eid);
+  rc = nonLeafLocate(key, eid);
   int j = eid * NON_LEAF_ENTRY_SIZE; // j = index to insert at
 
   // CASE: Inserting in the middle
@@ -345,7 +345,7 @@ RC BTNonLeafNode::readNonLeafEntry(int eid, int& key, PageId& pid) {
   return 0;
 }
 
-RC BTLeafNode::nonLeafLocate(int searchKey, int& eid) {
+RC BTNonLeafNode::nonLeafLocate(int searchKey, int& eid) {
   RC rc;
   int numEntries = 0;
   int curEntry = 0;
