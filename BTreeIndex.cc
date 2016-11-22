@@ -6,7 +6,7 @@
  * @author Junghoo "John" Cho <cho AT cs.ucla.edu>
  * @date 3/24/2008
  */
- 
+
 #include "BTreeIndex.h"
 #include "BTreeNode.h"
 
@@ -85,5 +85,29 @@ RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
  */
 RC BTreeIndex::readForward(IndexCursor& cursor, int& key, RecordId& rid)
 {
+    RC rc;
+    PageId pid = cursor.pid;
+    int eid = cursor.eid;
+
+    BTLeafNode node;
+    rc = node.read(pid, pf);
+    if (rc != 0) {
+      return rc;
+    }
+
+    rc = node.readEntry(eid, key, rid);
+    if (rc != 0) {
+      return rc;
+    }
+
+    // If eid > numKeys, overflow. Find next node to move the cursor
+    if (eid >= node.numKeys - 1) {
+      cursor.pid = node.getNextNodePtr();
+      cursor.eid = 0;
+    }
+    else {
+      cursor.eid++;
+    }
+
     return 0;
 }
