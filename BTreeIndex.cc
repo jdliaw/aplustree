@@ -9,6 +9,8 @@
 
 #include "BTreeIndex.h"
 #include "BTreeNode.h"
+#include <iostream>
+#include <cstring>
 
 using namespace std;
 
@@ -17,8 +19,8 @@ using namespace std;
  */
 BTreeIndex::BTreeIndex()
 {
-    rootPid = -1;
-    treeHeight = 0;
+  rootPid = -1;
+  treeHeight = 0;
 }
 
 /*
@@ -30,32 +32,32 @@ BTreeIndex::BTreeIndex()
  */
 RC BTreeIndex::open(const string& indexname, char mode)
 {
-    RC rc;
-    rc = pf.open(indexname, mode);
-    if (rc != 0) {
-      return rc;
-    }
+  RC rc;
+  rc = pf.open(indexname, mode);
+  if (rc != 0) {
+    return rc;
+  }
 
-    rc = pf.read(0, buffer); // use pid = 0 for reading rootPid/treeHeight from disk
-    if (rc != 0) {
-      return rc;
-    }
+  rc = pf.read(0, buffer); // use pid = 0 for reading rootPid/treeHeight from disk
+  if (rc != 0) {
+    return rc;
+  }
 
-    PageId pid;
-    int height;
+  PageId pid;
+  int height;
 
-    memcpy(&pid, buffer, sizeof(PageId));
-    memcpy(&height, buffer + sizeof(PageId), sizeof(int));
+  memcpy(&pid, buffer, sizeof(PageId));
+  memcpy(&height, buffer + sizeof(PageId), sizeof(int));
 
-    if (pid > rootPid) { // set rootPid and treeHeight
-      rootPid = pid;
-    }
+  if (pid > rootPid) { // set rootPid and treeHeight
+    rootPid = pid;
+  }
 
-    if (height > treeHeight) {
-      treeHeight = height;
-    }
+  if (height > treeHeight) {
+    treeHeight = height;
+  }
 
-    return 0;
+  return 0;
 }
 
 /*
@@ -64,19 +66,19 @@ RC BTreeIndex::open(const string& indexname, char mode)
  */
 RC BTreeIndex::close()
 {
-    RC rc;
+  RC rc;
 
-    memcpy(&buffer, rootPid, sizeof(PageId));
-    memcpy(&buffer + sizeof(PageId), treeHeight, sizeof(int));
+  memcpy(&buffer, &rootPid, sizeof(PageId));
+  memcpy(&buffer + sizeof(PageId), &treeHeight, sizeof(int));
 
-    rc = pf.write(0, buffer); // Write rootPid/treeHeight to disk
+  rc = pf.write(0, buffer); // Write rootPid/treeHeight to disk
 
-    rc = pf.close();
-    if (rc != 0) {
-      return rc;
-    }
+  rc = pf.close();
+  if (rc != 0) {
+    return rc;
+  }
 
-    return 0;
+  return 0;
 }
 
 /*
@@ -96,7 +98,7 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
     treeHeight++;
     rootPid = 1; // pid 0 is saved for index stf
 
-    rc = leaf_node.write(pid, pf); // write before done
+    rc = leaf_node.write(rootPid, pf); // write before done
     return rc;
   }
 
@@ -185,7 +187,7 @@ RC BTreeIndex::insertHelper(int key, const RecordId& rid, PageId curPid, int cur
       // Not successful, try insertAndSplit
       BTNonLeafNode siblingNode;
       int siblingKey;
-      rc = node.insertAndSplit(key, rid, siblingNode, siblingKey);
+      rc = node.insertAndSplit(moveKey, movePid, siblingNode, siblingKey);
 
       if (rc != 0) {
         return rc; // error
@@ -238,36 +240,36 @@ RC BTreeIndex::insertHelper(int key, const RecordId& rid, PageId curPid, int cur
  */
 RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
 {
-    RC rc;
-    BTNonLeafNode node;
-    BTLeafNode leaf_node;
+  RC rc;
+  BTNonLeafNode node;
+  BTLeafNode leaf_node;
 
-    PageId pid;
-    int eid;
+  PageId pid;
+  int eid;
 
-    for (int height = 1; height <= treeHeight; height++) {
-      rc = node.read(pid, pf);
-      if (rc != 0) {
-        return rc;
-      }
-
-      rc = node.locateChildPtr(searchKey, pid);
-      if (rc != 0) {
-        return rc;
-      }
-    }
-
-    // Now we are at the leaf level (height == treeHeight)
-    rc = leaf_node.read(pid, pf);
+  for (int height = 1; height <= treeHeight; height++) {
+    rc = node.read(pid, pf);
     if (rc != 0) {
       return rc;
     }
 
-    rc = leaf_node.locate(searchKey, eid);
-    cursor.pid = pid;
-    cursor.eid = eid;
+    rc = node.locateChildPtr(searchKey, pid);
+    if (rc != 0) {
+      return rc;
+    }
+  }
 
+  // Now we are at the leaf level (height == treeHeight)
+  rc = leaf_node.read(pid, pf);
+  if (rc != 0) {
     return rc;
+  }
+
+  rc = leaf_node.locate(searchKey, eid);
+  cursor.pid = pid;
+  cursor.eid = eid;
+
+  return rc;
 }
 
 /*
@@ -280,29 +282,29 @@ RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
  */
 RC BTreeIndex::readForward(IndexCursor& cursor, int& key, RecordId& rid)
 {
-    RC rc;
-    PageId pid = cursor.pid;
-    int eid = cursor.eid;
+  RC rc;
+  PageId pid = cursor.pid;
+  int eid = cursor.eid;
 
-    BTLeafNode node;
-    rc = node.read(pid, pf);
-    if (rc != 0) {
-      return rc;
-    }
+  BTLeafNode node;
+  rc = node.read(pid, pf);
+  if (rc != 0) {
+    return rc;
+  }
 
-    rc = node.readEntry(eid, key, rid);
-    if (rc != 0) {
-      return rc;
-    }
+  rc = node.readEntry(eid, key, rid);
+  if (rc != 0) {
+    return rc;
+  }
 
-    // If eid > numKeys, overflow. Find next node to move the cursor
-    if (eid >= node.numKeys - 1) {
-      cursor.pid = node.getNextNodePtr();
-      cursor.eid = 0;
-    }
-    else {
-      cursor.eid++;
-    }
+  // If eid > numKeys, overflow. Find next node to move the cursor
+  if (eid >= node.getKeyCount() - 1) {
+    cursor.pid = node.getNextNodePtr();
+    cursor.eid = 0;
+  }
+  else {
+    cursor.eid++;
+  }
 
-    return 0;
+  return 0;
 }
