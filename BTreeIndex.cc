@@ -110,7 +110,36 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
  */
 RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
 {
-    return 0;
+    RC rc;
+    BTNonLeafNode node;
+    BTLeafNode leaf_node;
+
+    PageId pid;
+    int eid;
+
+    for (int height = 1; height <= treeHeight; height++) {
+      rc = node.read(pid, pf);
+      if (rc != 0) {
+        return rc;
+      }
+
+      rc = node.locateChildPtr(searchKey, pid);
+      if (rc != 0) {
+        return rc;
+      }
+    }
+
+    // Now we are at the leaf level (height == treeHeight)
+    rc = leaf_node.read(pid, pf);
+    if (rc != 0) {
+      return rc;
+    }
+
+    rc = leaf_node.locate(searchKey, eid);
+    cursor.pid = pid;
+    cursor.eid = eid;
+
+    return rc;
 }
 
 /*
