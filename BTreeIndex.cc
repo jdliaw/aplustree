@@ -165,8 +165,57 @@ RC BTreeIndex::insertHelper(int key, const RecordId& rid, PageId curPid, int cur
     return rc;
   }
   else {  // Recursive case: inserting in middle
+    BTNonLeafNode node;
+    rc = node.read(curPid, pf);
 
+    PageId childPid = -1;
+    rc = node.locateChildPtr(key, childPid); // returns childPid
+
+    rc = insertHelper(key, rid, childPid, curHeight+1, movePid, moveKey); // Recursively traverse down the tree, following the ptrs
+
+    // Once movePid & moveKey modified, (base case reached), can push them up to parent
+    if (movePid != -1 && moveKey != -1) {
+      // Parent = our current node right now. Insert into cur.
+      rc = node.insert(movePid, moveKey);
+
+      if (rc == 0) { // successfully insert, write & return
+        rc = node.write(curPid, pf);
+        return rc;
+      }
+      // Not successful, try insertAndSplit
+      BTNonLeafNode siblingNode;
+      int siblingKey;
+      rc = node.insertAndSplit(key, rid, siblingNode, siblingKey);
+
+      if (rc != 0) {
+        return rc; // error
+      }
+
+      int endPid = pf.endPid();
+      movePid = endPid;
+      moveKey = siblingKey; // push up again
+
+      // write to disk
+      rc = node.write(curPid, pf);
+      if (rc != 0) {
+        return rc;
+      }
+      rc = siblingNode.write(endPid, pf);
+      if (rc != 0) {
+        return rc;
+      }
+
+      // If push all the way to height == 1, need to make a new root again
+      if (curHeight == 1) {
+        BTNonLeafNode root;
+        rc = root.initializeRoot(curPid, siblingKey, endPid);
+        treeHeight++;
+        rootPid = pf.endPid(); // Write new root to the next empty spot in pf
+        rc = root.write(rootPid, pf);
+      }
+    }
   }
+  return rc;
 }
 
 /**
