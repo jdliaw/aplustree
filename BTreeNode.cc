@@ -252,6 +252,13 @@ RC BTLeafNode::setNextNodePtr(PageId pid) {
   return 0;
 }
 
+// Constructor
+BTNonLeafNode::BTNonLeafNode() {
+  numKeys = 0;
+  lastIndex = 0;
+  siblingPID = -1;
+}
+
 /*
  * Read the content of the node from the page pid in the PageFile pf.
  * @param pid[IN] the PageId to read
