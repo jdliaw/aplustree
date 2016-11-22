@@ -87,7 +87,86 @@ RC BTreeIndex::close()
  */
 RC BTreeIndex::insert(int key, const RecordId& rid)
 {
-    return 0;
+  RC rc;
+  // Empty tree, insert first element
+  BTLeafNode leaf_node;
+
+  if (treeHeight == 0) {
+    rc = leaf_node.insert(key, rid);
+    treeHeight++;
+    rootPid = 1; // pid 0 is saved for index stf
+
+    rc = leaf_node.write(pid, pf); // write before done
+    return rc;
+  }
+
+  // IndexCursor cursor;
+  // rc = locate(key, cursor);
+  // // cursor is now at entry immediately after largest key smaller than searchKey
+
+  PageId movePid = -1;
+  int moveKey = -1;
+  rc = insertHelper(key, rid, rootPid, 1, movePid, moveKey); // start at root (height == 1)
+
+  return 0;
+}
+
+RC BTreeIndex::insertHelper(int key, const RecordId& rid, PageId curPid, int curHeight, PageId& movePid, int& moveKey) {
+  RC rc;
+
+  if (curHeight == treeHeight) { // Base case: inserting leaf node
+    BTLeafNode leaf_node;
+    rc = leaf_node.read(curPid, pf);
+    if (rc != 0) {
+      return rc;
+    }
+
+    rc = leaf_node.insert(key, rid);
+    if (rc == 0) { // If successfully insert, write and return (no overflow)
+      rc = leaf_node.write(curPid, pf);
+      return rc;
+    }
+    // Not successfully insert. Overflow => try insertAndSplit
+    BTLeafNode siblingLeaf;
+    int siblingKey;
+    rc = leaf_node.insertAndSplit(key, rid, siblingLeaf, siblingKey); // returns siblingKey, which we need to push to parent
+
+    if (rc != 0) {
+      return rc;
+    }
+    // else successful
+    int endPid = pf.endPid();
+    movePid = endPid; // last pid in the current node points to the newly allocated node (sibling), which we want the parent to have
+    moveKey = siblingKey; // sibling key needs to be pushed up to parent
+
+    // set sibling next ptr
+    siblingLeaf.setNextNodePtr(leaf_node.getNextNodePtr());
+    leaf_node.setNextNodePtr(endPid);
+
+    // write to disk
+    rc = leaf_node.write(curPid, pf);
+    if (rc != 0) {
+      return rc;
+    }
+    rc = siblingLeaf.write(endPid, pf);
+    if (rc != 0) {
+      return rc;
+    }
+
+    // at height of 1, insertAndSplit needs to create a new root to push up to
+    if (treeHeight == 1) {
+      BTNonLeafNode root;
+      rc = root.initializeRoot(curPid, siblingKey, endPid);
+      treeHeight++;
+      rootPid = pf.endPid(); // Write new root to the next empty spot in pf
+      rc = root.write(rootPid, pf);
+    }
+
+    return rc;
+  }
+  else {  // Recursive case: inserting in middle
+
+  }
 }
 
 /**
