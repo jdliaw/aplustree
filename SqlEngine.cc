@@ -14,6 +14,7 @@
 #include <fstream>
 #include "Bruinbase.h"
 #include "SqlEngine.h"
+#include "BTreeIndex.h"
 
 using namespace std;
 
@@ -39,11 +40,22 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
   RecordFile rf;   // RecordFile containing the table
   RecordId   rid;  // record cursor for table scanning
 
+  // **
+  BTreeIndex index;
+
+
   RC     rc;
   int    key;
   string value;
   int    count;
   int    diff;
+
+  string idx_file = table + ".idx";
+  rc = index.open(idx_file.c_str(), 'r');
+
+  if(rc == 0) {
+    //index stuff
+  }
 
   // open the table file
   if ((rc = rf.open(table + ".tbl", 'r')) < 0) {

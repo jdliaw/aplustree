@@ -9,12 +9,91 @@
  
 #include "Bruinbase.h"
 #include "SqlEngine.h"
+#include "BTreeIndex.h"
+#include "BTreeNode.h"
+
 #include <cstdio>
+#include <iostream>
+
+void BTLeafTest() {
+  printf("Starting BTLeafNodeTest...\n");
+	BTLeafNode node;
+  RC rc;
+  int i;
+  for(i = 0; i < 60; i++) {
+    int key = i;
+    RecordId rid;
+    rid.pid = i;
+    rid.sid = i;
+    rc = node.insert(key, rid);
+    if (rc != 0) {
+		  std::cout << "error inserting key into node, " << i << std::endl;
+    }
+	}
+  node.printStuff();
+  for(; i < 90; i++) {
+    int key = i;
+    RecordId rid;
+    rid.pid = i;
+    rid.sid = i;
+    rc = node.insert(key, rid);
+    if (rc != 0) {
+		  std::cout << "error inserting key into node, " << i << std::endl;
+    }
+	}
+  BTLeafNode sibling;
+  RecordId rid;
+  rid.pid = 100;
+  rid.sid = 100;
+  int siblingKey;
+  node.printStuff();
+  rc = node.insertAndSplit(100, rid, sibling, siblingKey);
+  node.printStuff();
+  sibling.printStuff();
+}
+
+void BTNonLeafTest() {
+  printf("Starting BTNonLeafNodeTest...\n");
+	BTNonLeafNode node;
+  RC rc;
+  int i;
+  for(i = 0; i < 60; i++) {
+    int key = i;
+    PageId pid;
+    pid = i;
+    rc = node.insert(key, pid);
+    if (rc != 0) {
+		  std::cout << "error inserting key into node, " << i << std::endl;
+    }
+	}
+  node.printStuff();
+  for(; i < 90; i++) {
+    int key = i;
+    PageId pid;
+    pid = i;
+    rc = node.insert(key, pid);
+    if (rc != 0) {
+		  std::cout << "error inserting key into node, " << i << std::endl;
+    }
+	}
+  // BTLeafNode sibling;
+  // RecordId rid;
+  // rid.pid = 100;
+  // rid.sid = 100;
+  // int siblingKey;
+  node.printStuff();
+  // rc = node.insertAndSplit(100, rid, sibling, siblingKey);
+  // node.printStuff();
+  // sibling.printStuff();
+}
 
 int main()
 {
+//  BTLeafTest():
+  BTNonLeafTest();  
+
   // run the SQL engine taking user commands from standard input (console).
-  SqlEngine::run(stdin);
+  // SqlEngine::run(stdin);
 
   return 0;
 }

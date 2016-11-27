@@ -68,8 +68,8 @@ RC BTreeIndex::close()
 {
   RC rc;
 
-  memcpy(&buffer, &rootPid, sizeof(PageId));
-  memcpy(&buffer + sizeof(PageId), &treeHeight, sizeof(int));
+  memcpy(buffer, &rootPid, sizeof(PageId));
+  memcpy(buffer + sizeof(PageId), &treeHeight, sizeof(int));
 
   rc = pf.write(0, buffer); // Write rootPid/treeHeight to disk
 
