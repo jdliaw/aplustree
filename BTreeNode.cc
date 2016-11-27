@@ -333,7 +333,6 @@ int BTNonLeafNode::getKeyCount() {
 RC BTNonLeafNode::insert(int key, PageId pid) {
 
   if (getKeyCount() >= MAX_NODE_SIZE) {
-    std::cout << "SDAFSDFADSFSDAFSDAFADSF" << endl;
     return RC_NODE_FULL; // Return an error code if the node is full.
   }
   numKeys = getKeyCount();
@@ -494,7 +493,7 @@ RC BTNonLeafNode::insertAndSplit(int key, PageId pid, BTNonLeafNode& sibling, in
   // Clear the 2nd half of the original node after the middle split
   char* begin = &buffer[middle * NON_LEAF_ENTRY_SIZE];
   char* end = begin + ((MAX_NODE_SIZE + 1 - middle) * NON_LEAF_ENTRY_SIZE);
-  std::fill(begin, end, 0);
+  std::fill(begin, end, -1);
 
   return rc;
 }
@@ -590,7 +589,7 @@ void BTNonLeafNode::printStuff() {
     
     char* traverse = buffer;
     
-    while (*traverse) {
+    while (*traverse != -1) {
         int key;
         PageId pid;
         

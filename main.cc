@@ -66,7 +66,6 @@ void BTNonLeafTest() {
 		  std::cout << "error inserting key into node, " << i << std::endl;
     }
 	}
-  node.printStuff();
   for(; i < 90; i++) {
     int key = i;
     PageId pid;
@@ -76,15 +75,15 @@ void BTNonLeafTest() {
 		  std::cout << "error inserting key into node, " << i << std::endl;
     }
 	}
-  // BTLeafNode sibling;
-  // RecordId rid;
-  // rid.pid = 100;
-  // rid.sid = 100;
-  // int siblingKey;
+  BTNonLeafNode sibling;
+  int key = 100;
+  PageId pid = 100;
+  int midKey;
+  rc = node.insertAndSplit(key, pid, sibling, midKey);
+  std::cout << "midKey: " << midKey << std::endl;
+
   node.printStuff();
-  // rc = node.insertAndSplit(100, rid, sibling, siblingKey);
-  // node.printStuff();
-  // sibling.printStuff();
+  sibling.printStuff();
 }
 
 int main()
