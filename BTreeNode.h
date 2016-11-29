@@ -173,7 +173,7 @@ class BTNonLeafNode {
     * @param pid2[IN] the PageId to insert behind the key
     * @return 0 if successful. Return an error code if there is an error.
     */
-    RC initializeRoot(PageId pid1, int key, PageId pid2);
+    RC initializeRoot(PageId pid1, int key1, PageId pid2, int key2);
 
    /**
     * Return the number of keys stored in the node.
@@ -207,7 +207,6 @@ class BTNonLeafNode {
     char buffer[PageFile::PAGE_SIZE];
     int numKeys;
     int lastIndex;
-    PageId siblingPID;
 };
 
 #endif /* BTREENODE_H */

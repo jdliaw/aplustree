@@ -86,11 +86,141 @@ void BTNonLeafTest() {
   sibling.printStuff();
 }
 
+
+void print_index(PageId root_pid, int tree_height, std::string idx) {
+    int key;
+    PageFile pf;
+    pf.open(idx, 'w');	// TODO: change this to the name of your index file
+    
+    BTLeafNode leaf;
+    BTNonLeafNode root;
+    RecordId output;
+    
+    printf("Start printing for pid1: ");
+    leaf.read(1, pf);
+    leaf.printStuff();
+    
+    printf("Start printing for pid2: ");
+    leaf.read(2, pf);
+    leaf.printStuff();
+
+    printf("Start printing for pid3: ");
+    root.read(3, pf);
+    root.printStuff();
+    
+    printf("Start printing for pid4: ");
+    leaf.read(4, pf);
+    leaf.printStuff();
+    
+    printf("Start printing for pid5: ");
+    leaf.read(5, pf);
+    leaf.printStuff();
+    
+//    leaf.readEntry(0, key, output);
+//    printf("Pid: 1\t");
+//    printf("Key: %d\t", key);
+//    printf("Record pid: %d\t", output.pid);
+//    printf("Record sid: %d\t", output.sid);
+//    printf("Sibling Node: %d\n", leaf.getNextNodePtr());
+//    
+//    while(leaf.getNextNodePtr() >= 0) {
+//        printf("Pid: %d\t", leaf.getNextNodePtr());
+//        leaf.read(leaf.getNextNodePtr(), pf);
+//        leaf.readEntry(0, key, output);
+//        printf("Key: %d\t", key);
+//        printf("Record pid: %d\t", output.pid);
+//        printf("Record sid: %d\t", output.sid);
+//        printf("Sibling Node: %d\n", leaf.getNextNodePtr());
+//    }
+//    
+//    
+//    BTNonLeafNode nonleaf;
+//    PageId o_pid;
+//    int curr_depth = 1;
+//    queue<PageId> pids;
+//    pids.push(root_pid);
+//    
+//    while (curr_depth < tree_height) {
+//        queue<PageId> next_pids;
+//        while (!pids.empty()) {
+//            nonleaf.read(pids.front(), pf);
+//            printf("Pid: %d\t", pids.front());
+//            printf("Number of Keys: %d\t", nonleaf.getKeyCount());
+////            nonleaf.readFirstPid(o_pid);
+////            printf("First pid: %d\t", o_pid);
+//            next_pids.push(o_pid);
+//            nonleaf.readNonLeafEntry(0, key, o_pid);
+//            printf("Key: %d\t", key);
+//            printf("Second pid: %d\t", o_pid);
+//            next_pids.push(o_pid);
+//            for (int i = 1; i < nonleaf.getKeyCount(); i++) {
+//                nonleaf.readNonLeafEntry(i, key, o_pid);
+//                printf("Key: %d\t", key);
+//                printf("Next pid: %d\t", o_pid);
+//                next_pids.push(o_pid);
+//            }
+//            pids.pop();
+//            printf("\n");
+//        }
+//        pids = next_pids;
+//        curr_depth++;
+//    }
+    
+    pf.close();
+}
+
+void insertStuff(BTreeIndex &index) {
+    RecordId rid;
+    int i;
+    for(i = 0; i < 80; i+= 2) {
+        rid.pid = i;
+        rid.sid = i;
+        index.insert(i, rid);
+    }
+    
+    for(i = 5; i < 85; i+=2) {
+        rid.pid = i;
+        rid.sid = i;
+        index.insert(i, rid);
+    }
+    
+    for(; i < 143; i++) {
+        rid.pid = i;
+        rid.sid = i;
+        index.insert(i, rid);
+    }
+    
+
+    for(; i < 150; i++) {
+        rid.pid = i;
+        rid.sid = i;
+        index.insert(i, rid);
+    }
+    
+    rid.pid = 3;
+    rid.sid = 3;
+    index.insert(3, rid);
+}
+
+
 int main()
 {
 //  BTLeafTest():
-  BTNonLeafTest();  
+//  BTNonLeafTest();  
+  BTreeIndex index;
 
+  std::string idx = "test68.idx";
+  index.open(idx, 'w');	// TODO: change this to the name of your index file
+
+  insertStuff(index);
+    
+  printf("RootPid: %d\n", index.getRootPid());
+  printf("TreeHeight: %d\n", index.getTreeHeight());
+    
+    
+  index.close();
+    // print function is called here
+  print_index(index.getRootPid(), index.getTreeHeight(), idx);
   // run the SQL engine taking user commands from standard input (console).
   // SqlEngine::run(stdin);
 

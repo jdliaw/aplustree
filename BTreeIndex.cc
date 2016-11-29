@@ -158,7 +158,10 @@ RC BTreeIndex::insertHelper(int key, const RecordId& rid, PageId curPid, int cur
     // at height of 1, insertAndSplit needs to create a new root to push up to
     if (treeHeight == 1) {
       BTNonLeafNode root;
-      rc = root.initializeRoot(curPid, siblingKey, endPid);
+      int root_key;
+      RecordId root_rid;      
+      leaf_node.readEntry(0, root_key, root_rid); // ***
+      rc = root.initializeRoot(curPid, root_key, endPid, siblingKey);
       treeHeight++;
       rootPid = pf.endPid(); // Write new root to the next empty spot in pf
       rc = root.write(rootPid, pf);
@@ -178,7 +181,7 @@ RC BTreeIndex::insertHelper(int key, const RecordId& rid, PageId curPid, int cur
     // Once movePid & moveKey modified, (base case reached), can push them up to parent
     if (movePid != -1 && moveKey != -1) {
       // Parent = our current node right now. Insert into cur.
-      rc = node.insert(movePid, moveKey);
+      rc = node.insert(moveKey, movePid);
 
       if (rc == 0) { // successfully insert, write & return
         rc = node.write(curPid, pf);
@@ -210,7 +213,10 @@ RC BTreeIndex::insertHelper(int key, const RecordId& rid, PageId curPid, int cur
       // If push all the way to height == 1, need to make a new root again
       if (curHeight == 1) {
         BTNonLeafNode root;
-        rc = root.initializeRoot(curPid, siblingKey, endPid);
+        int root_key;
+        PageId root_pid;
+        node.readNonLeafEntry(0, root_key, root_pid); // ***
+        rc = root.initializeRoot(curPid, root_key, endPid, siblingKey);
         treeHeight++;
         rootPid = pf.endPid(); // Write new root to the next empty spot in pf
         rc = root.write(rootPid, pf);
@@ -308,3 +314,7 @@ RC BTreeIndex::readForward(IndexCursor& cursor, int& key, RecordId& rid)
 
   return 0;
 }
+
+
+int BTreeIndex::getTreeHeight(void) { return treeHeight; }
+PageId BTreeIndex::getRootPid(void) { return rootPid; }
