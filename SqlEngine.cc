@@ -128,7 +128,64 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
         goto exit_select;
       }
 
+      // check the conditions on the tuple
+      for (unsigned i = 0; i < cond.size(); i++) {
+        // compute the difference between the tuple value and the condition value
+        switch (cond[i].attr) {
+        case 1:
+          diff = key - atoi(cond[i].value);
+          break;
+        case 2:
+          diff = strcmp(value.c_str(), cond[i].value);
+          break;
+        default: break;
+        }
 
+        // skip the tuple if any condition is not met
+        switch (cond[i].comp) {
+        case SelCond::EQ:
+          if (diff != 0) goto next_tuple;
+          break;
+        case SelCond::NE:
+          if (diff == 0) goto next_tuple;
+          break;
+        case SelCond::GT:
+          if (diff <= 0) goto next_tuple;
+          break;
+        case SelCond::LT:
+          if (diff >= 0) goto next_tuple;
+          break;
+        case SelCond::GE:
+          if (diff < 0) goto next_tuple;
+          break;
+        case SelCond::LE:
+          if (diff > 0) goto next_tuple;
+          break;
+        default:
+          break;
+        }
+      }
+
+      // the condition is met for the tuple.
+      // increase matching tuple counter
+      count++;
+
+      // print the tuple
+      switch (attr) {
+      case 1:  // SELECT key
+        fprintf(stdout, "%d\n", key);
+        break;
+      case 2:  // SELECT value
+        fprintf(stdout, "%s\n", value.c_str());
+        break;
+      case 3:  // SELECT *
+        fprintf(stdout, "%d '%s'\n", key, value.c_str());
+        break;
+      }
+
+      // move to the next tuple
+      next_tuple:
+      ++rid;
     }
   }
   else {
