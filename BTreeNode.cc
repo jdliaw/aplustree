@@ -73,6 +73,9 @@ RC BTLeafNode::insert(int key, const RecordId& rid) {
   
   // LOCATE where to insert this key
   rc = locate(key, eid);
+  if(rc == RC_NO_SUCH_RECORD) {
+    rc = 0;
+  }
   int j = eid * LEAF_ENTRY_SIZE; // j = index to insert at
   
   // CASE: Inserting in the middle
@@ -258,7 +261,7 @@ RC BTLeafNode::readEntry(int eid, int& key, RecordId& rid) {
  */
 PageId BTLeafNode::getNextNodePtr() {
   PageId pid = -1;
-  memcpy(&pid, buffer + MAX_NODE_SIZE * LEAF_ENTRY_SIZE + LEAF_ENTRY_SIZE, sizeof(PageId));
+  memcpy(&pid, buffer + MAX_NODE_SIZE * LEAF_ENTRY_SIZE + LEAF_ENTRY_SIZE*2, sizeof(PageId));
   return pid;
 }
 
@@ -269,7 +272,7 @@ PageId BTLeafNode::getNextNodePtr() {
  */
 RC BTLeafNode::setNextNodePtr(PageId pid) {
   char*p = (char*) &pid;
-  memcpy(buffer + (MAX_NODE_SIZE * LEAF_ENTRY_SIZE) + LEAF_ENTRY_SIZE, p, sizeof(PageId));
+  memcpy(buffer + (MAX_NODE_SIZE * LEAF_ENTRY_SIZE) + LEAF_ENTRY_SIZE*2, p, sizeof(PageId));
   return 0;
 }
 
@@ -341,6 +344,9 @@ RC BTNonLeafNode::insert(int key, PageId pid) {
   
   // LOCATE where to insert this key
   rc = nonLeafLocate(key, eid);
+  if(rc == RC_NO_SUCH_RECORD) {
+    rc = 0;
+  }
   int j = eid * NON_LEAF_ENTRY_SIZE; // j = index to insert at
   
   // CASE: Inserting in the middle
@@ -484,7 +490,11 @@ RC BTNonLeafNode::insertAndSplit(int key, PageId pid, BTNonLeafNode& sibling, in
   std::memcpy(sibling.buffer, src, (numKeys-middle) * NON_LEAF_ENTRY_SIZE);
   
   // Set midKey to the middle key
-  midKey = middle;
+  PageId ins_pid;
+  int ins_key;
+  // Set midKey to the middle key
+  rc = readNonLeafEntry(middle, ins_key, ins_pid);
+  midKey = ins_key;
   
   // update numKeys
   sibling.numKeys = numKeys - middle;

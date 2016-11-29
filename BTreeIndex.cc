@@ -199,8 +199,8 @@ RC BTreeIndex::insertHelper(int key, const RecordId& rid, PageId curPid, int cur
       }
 
       int endPid = pf.endPid();
-      mPid = endPid;
-      mKey = siblingKey; // push up again
+      movePid = endPid;
+      moveKey = siblingKey; // push up again
 
       // write to disk
       rc = node.write(curPid, pf);

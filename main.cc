@@ -57,7 +57,7 @@ void BTNonLeafTest() {
 	BTNonLeafNode node;
   RC rc;
   int i;
-  for(i = 0; i < 60; i++) {
+  for(i = 0; i < 60; i+=2) {
     int key = i;
     PageId pid;
     pid = i;
@@ -66,6 +66,15 @@ void BTNonLeafTest() {
 		  std::cout << "error inserting key into node, " << i << std::endl;
     }
 	}
+  for(int i = 1; i < 61; i+=2) {
+    int key = i;
+    PageId pid;
+    pid = i;
+    rc = node.insert(key, pid);
+    if (rc != 0) {
+		  std::cout << "error inserting key into node, " << i << std::endl;
+    }
+  }
   for(; i < 90; i++) {
     int key = i;
     PageId pid;
@@ -95,6 +104,8 @@ void print_index(PageId root_pid, int tree_height, std::string idx) {
     BTLeafNode leaf;
     BTNonLeafNode root;
     RecordId output;
+
+
     
     // printf("Start printing for pid1: ");
     // leaf.read(1, pf);
@@ -176,7 +187,8 @@ void print_index(PageId root_pid, int tree_height, std::string idx) {
 //        pids = next_pids;
 //        curr_depth++;
 //    }
-    
+    root.read(2660, pf);
+    root.printStuff();
     pf.close();
 }
 
@@ -211,37 +223,74 @@ void insertStuff(BTreeIndex &index) {
     rid.pid = 3;
     rid.sid = 3;
     index.insert(3, rid);
-    for(i = 200; i < 5500; i+=2) {
+    for(i = 200; i < 300; i+=2) {
         rid.pid = i;
         rid.sid = i;
         index.insert(i, rid);
     }
-    for(i = 201; i < 5501; i+=2) {
+    for(i = 201; i < 301; i+=2) {
         rid.pid = i;
         rid.sid = i;
         index.insert(i, rid);
-    }    
+    }
+    
+    for(i = 302; i < 320; i+=2) {
+        rid.pid = i;
+        rid.sid = i;
+        index.insert(i, rid);
+    }
+    
+    for(; i < 5000; i+=2) {
+        rid.pid = i;
+        rid.sid = i;
+        index.insert(i, rid);
+    }
+    
+    for(i = 303; i < 385; i+=2) {
+        rid.pid = i;
+        rid.sid = i;
+        index.insert(i, rid);
+    }
+
+    rid.pid = i;
+    rid.sid = i;
+    index.insert(i, rid);    
+    for(; i < 50001; i+=2) {
+        rid.pid = i;
+        rid.sid = i;
+        index.insert(i, rid);
+    }
+    for(i = 10000; i < 100000; i+= 2) {
+        rid.pid = i;
+        rid.sid = i;
+        index.insert(i, rid);
+    }
+    for(; i < 200000; i+= 1) {
+        rid.pid = i;
+        rid.sid = i;
+        index.insert(i, rid);
+    }
 }
 
 
 int main()
 {
 //  BTLeafTest():
-//  BTNonLeafTest();  
-  BTreeIndex index;
+  // BTNonLeafTest();  
+  // BTreeIndex index;
 
-  std::string file = "test1.idx";
-  index.open(file, 'w');	// TODO: change this to the name of your index file
+  // std::string file = "test1.idx";
+  // index.open(file, 'w');	// TODO: change this to the name of your index file
 
-  insertStuff(index);
+  // insertStuff(index);
     
-  printf("RootPid: %d\n", index.getRootPid());
-  printf("TreeHeight: %d\n", index.getTreeHeight());
+  // printf("RootPid: %d\n", index.getRootPid());
+  // printf("TreeHeight: %d\n", index.getTreeHeight());
     
     
-  index.close();
-    // print function is called here
-  print_index(index.getRootPid(), index.getTreeHeight(), file);
+  // index.close();
+  //   //print function is called here
+  // print_index(index.getRootPid(), index.getTreeHeight(), file);
   // run the SQL engine taking user commands from standard input (console).
   // SqlEngine::run(stdin);
 
