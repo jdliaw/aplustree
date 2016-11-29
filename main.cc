@@ -96,25 +96,36 @@ void print_index(PageId root_pid, int tree_height, std::string idx) {
     BTNonLeafNode root;
     RecordId output;
     
-    printf("Start printing for pid1: ");
-    leaf.read(1, pf);
-    leaf.printStuff();
+    // printf("Start printing for pid1: ");
+    // leaf.read(1, pf);
+    // leaf.printStuff();
     
-    printf("Start printing for pid2: ");
-    leaf.read(2, pf);
-    leaf.printStuff();
+    // printf("Start printing for pid2: ");
+    // leaf.read(2, pf);
+    // leaf.printStuff();
 
-    printf("Start printing for pid3: ");
-    root.read(3, pf);
-    root.printStuff();
+    // printf("Start printing for pid3: ");
+    // root.read(3, pf);
+    // root.printStuff();
     
-    printf("Start printing for pid4: ");
-    leaf.read(4, pf);
-    leaf.printStuff();
+    // printf("Start printing for pid4: ");
+    // leaf.read(4, pf);
+    // leaf.printStuff();
     
-    printf("Start printing for pid5: ");
-    leaf.read(5, pf);
-    leaf.printStuff();
+    // printf("Start printing for pid5: ");
+    // leaf.read(5, pf);
+    // leaf.printStuff();
+
+    // printf("Start printing for pid74: ");
+    // root.read(74, pf);
+    // root.printStuff();
+
+    int i = 1;
+    while(i != -1) {
+      leaf.read(i, pf);
+      leaf.printStuff();
+      i = leaf.getNextNodePtr();
+    }
     
 //    leaf.readEntry(0, key, output);
 //    printf("Pid: 1\t");
@@ -200,6 +211,16 @@ void insertStuff(BTreeIndex &index) {
     rid.pid = 3;
     rid.sid = 3;
     index.insert(3, rid);
+    for(i = 200; i < 5500; i+=2) {
+        rid.pid = i;
+        rid.sid = i;
+        index.insert(i, rid);
+    }
+    for(i = 201; i < 5501; i+=2) {
+        rid.pid = i;
+        rid.sid = i;
+        index.insert(i, rid);
+    }    
 }
 
 
@@ -209,8 +230,8 @@ int main()
 //  BTNonLeafTest();  
   BTreeIndex index;
 
-  std::string idx = "test68.idx";
-  index.open(idx, 'w');	// TODO: change this to the name of your index file
+  std::string file = "test1.idx";
+  index.open(file, 'w');	// TODO: change this to the name of your index file
 
   insertStuff(index);
     
@@ -220,7 +241,7 @@ int main()
     
   index.close();
     // print function is called here
-  print_index(index.getRootPid(), index.getTreeHeight(), idx);
+  print_index(index.getRootPid(), index.getTreeHeight(), file);
   // run the SQL engine taking user commands from standard input (console).
   // SqlEngine::run(stdin);
 

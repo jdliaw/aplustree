@@ -176,12 +176,14 @@ RC BTreeIndex::insertHelper(int key, const RecordId& rid, PageId curPid, int cur
     PageId childPid = -1;
     rc = node.locateChildPtr(key, childPid); // returns childPid
 
-    rc = insertHelper(key, rid, childPid, curHeight+1, movePid, moveKey); // Recursively traverse down the tree, following the ptrs
+    int mPid = -1;
+    int mKey = -1;
+    rc = insertHelper(key, rid, childPid, curHeight+1, mPid, mKey); // Recursively traverse down the tree, following the ptrs
 
     // Once movePid & moveKey modified, (base case reached), can push them up to parent
-    if (movePid != -1 && moveKey != -1) {
+    if (mPid != -1 && mKey != -1) {
       // Parent = our current node right now. Insert into cur.
-      rc = node.insert(moveKey, movePid);
+      rc = node.insert(mKey, mPid);
 
       if (rc == 0) { // successfully insert, write & return
         rc = node.write(curPid, pf);
@@ -190,15 +192,15 @@ RC BTreeIndex::insertHelper(int key, const RecordId& rid, PageId curPid, int cur
       // Not successful, try insertAndSplit
       BTNonLeafNode siblingNode;
       int siblingKey;
-      rc = node.insertAndSplit(moveKey, movePid, siblingNode, siblingKey);
+      rc = node.insertAndSplit(mKey, mPid, siblingNode, siblingKey);
 
       if (rc != 0) {
         return rc; // error
       }
 
       int endPid = pf.endPid();
-      movePid = endPid;
-      moveKey = siblingKey; // push up again
+      mPid = endPid;
+      mKey = siblingKey; // push up again
 
       // write to disk
       rc = node.write(curPid, pf);
