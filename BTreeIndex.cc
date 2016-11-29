@@ -252,10 +252,10 @@ RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
   BTNonLeafNode node;
   BTLeafNode leaf_node;
 
-  PageId pid;
+  PageId pid = rootPid;
   int eid;
 
-  for (int height = 1; height <= treeHeight; height++) {
+  for (int height = 1; height < treeHeight; height++) {
     rc = node.read(pid, pf);
     if (rc != 0) {
       return rc;
@@ -276,7 +276,7 @@ RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
   rc = leaf_node.locate(searchKey, eid);
   cursor.pid = pid;
   cursor.eid = eid;
-
+  
   return rc;
 }
 

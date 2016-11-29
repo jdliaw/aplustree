@@ -131,12 +131,12 @@ void print_index(PageId root_pid, int tree_height, std::string idx) {
     // root.read(74, pf);
     // root.printStuff();
 
-    int i = 1;
-    while(i != -1) {
-      leaf.read(i, pf);
-      leaf.printStuff();
-      i = leaf.getNextNodePtr();
-    }
+    // int i = 1;
+    // while(i != -1) {
+    //   leaf.read(i, pf);
+    //   leaf.printStuff();
+    //   i = leaf.getNextNodePtr();
+    // }
     
 //    leaf.readEntry(0, key, output);
 //    printf("Pid: 1\t");
@@ -277,20 +277,25 @@ int main()
 {
 //  BTLeafTest():
   // BTNonLeafTest();  
-  // BTreeIndex index;
+  BTreeIndex index;
 
-  // std::string file = "test1.idx";
-  // index.open(file, 'w');	// TODO: change this to the name of your index file
+  std::string file = "test1.idx";
+  index.open(file, 'w');	// TODO: change this to the name of your index file
 
-  // insertStuff(index);
+  insertStuff(index);
     
   // printf("RootPid: %d\n", index.getRootPid());
   // printf("TreeHeight: %d\n", index.getTreeHeight());
-    
-    
-  // index.close();
+
+
+  IndexCursor cursor;
+  index.locate(1232, cursor);
+  std::cout << "cursor.pid: " << cursor.pid << ", cursor.eid: " << cursor.eid << std::endl;      
+  
+  index.close();
+
   //   //print function is called here
-  // print_index(index.getRootPid(), index.getTreeHeight(), file);
+   print_index(index.getRootPid(), index.getTreeHeight(), file);
   // run the SQL engine taking user commands from standard input (console).
   // SqlEngine::run(stdin);
 
