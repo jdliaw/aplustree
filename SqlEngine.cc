@@ -40,22 +40,12 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
   RecordFile rf;   // RecordFile containing the table
   RecordId   rid;  // record cursor for table scanning
 
-  // **
   BTreeIndex index;
-
-
   RC     rc;
   int    key;
   string value;
   int    count;
   int    diff;
-
-  string idx_file = table + ".idx";
-  rc = index.open(idx_file.c_str(), 'r');
-
-  if(rc == 0) {
-    //index stuff
-  }
 
   // open the table file
   if ((rc = rf.open(table + ".tbl", 'r')) < 0) {
@@ -63,74 +53,203 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
     return rc;
   }
 
-  // scan the table file from the beginning
   rid.pid = rid.sid = 0;
   count = 0;
-  while (rid < rf.endRid()) {
-    // read the tuple
-    if ((rc = rf.read(rid, key, value)) < 0) {
-      fprintf(stderr, "Error: while reading a tuple from table %s\n", table.c_str());
-      goto exit_select;
+
+  bool hasVal = false;
+  int min = -1;
+  int max = -1;
+  int findKey = -1;
+  bool isNE = false;
+  bool condEQ = false;
+  bool indexOpened = false;
+
+  // Determine our conditions (so can choose to use index or table)
+  for (unsigned i = 0; i < cond.size(); i++) {
+    if (cond[i].attr == 2) {
+      hasVal = true;
     }
 
-    // check the conditions on the tuple
-    for (unsigned i = 0; i < cond.size(); i++) {
-      // compute the difference between the tuple value and the condition value
-      switch (cond[i].attr) {
-      case 1:
-	diff = key - atoi(cond[i].value);
-	break;
-      case 2:
-	diff = strcmp(value.c_str(), cond[i].value);
-	break;
-      }
-
-      // skip the tuple if any condition is not met
-      switch (cond[i].comp) {
+    int val = atoi(cond[i].value);
+    switch (cond[i].comp) {
       case SelCond::EQ:
-	if (diff != 0) goto next_tuple;
-	break;
+        findKey = atoi(cond[i].value);
+        break;
       case SelCond::NE:
-	if (diff == 0) goto next_tuple;
-	break;
-      case SelCond::GT:
-	if (diff <= 0) goto next_tuple;
-	break;
+        isNE = true;
+        break;
       case SelCond::LT:
-	if (diff >= 0) goto next_tuple;
-	break;
-      case SelCond::GE:
-	if (diff < 0) goto next_tuple;
-	break;
+        if (max == -1 || val > max)
+          max = val;
+        break;
       case SelCond::LE:
-	if (diff > 0) goto next_tuple;
-	break;
+        if (max == -1 || val > max) {
+          max = val;
+          condEQ = true;
+        }
+        break;
+      case SelCond::GT:
+        if (min == -1 || val < min)
+          min = val;
+        break;
+      case SelCond::GE:
+        if (min == -1 || val < min) {
+          min = val;
+          condEQ = true;
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  // Check if conditions are possible
+  if (min > max && max != -1 && min != -1)
+    goto exit_to_print;
+  if (min == max && !condEQ && max != -1 && min != -1)
+    goto exit_to_print;
+
+  /* DON'T use index tree when:
+    1. Index tree doesn't exist
+    2. Not Equal condition on key
+  */
+
+  string idx_file = table + ".idx";
+  rc = index.open(idx_file.c_str(), 'r');
+
+  if (rc != 0 || (isNE && !hasVal)) {
+    // Use table
+
+    // scan the table file from the beginning
+    while (rid < rf.endRid()) {
+      // read the tuple
+      if ((rc = rf.read(rid, key, value)) < 0) {
+        fprintf(stderr, "Error: while reading a tuple from table %s\n", table.c_str());
+        goto exit_select;
+      }
+
+
+    }
+  }
+  else {
+    // Use index
+    IndexCursor cursor;
+    indexOpened = true;
+
+    if (findKey != -1) {
+      index.locate(findKey, cursor); // returns set cursor
+    }
+    else if (min != -1 && condEQ) {
+      index.locate(min, cursor); // >= min
+    }
+    else if (min != -1 && !condEQ) {
+      index.locate(min+1, cursor); // > min
+    }
+    else {
+      index.locate(0, cursor); // start at root
+    }
+
+    // Read through index
+    while (index.readForward(cursor, key, rid) == 0) {
+      // If SELECT key or count(*), don't read from disk [attr 1 == key, 4 == count(*)]
+      if (!hasVal && (attr == 1 || attr == 4)) {
+        if (findKey != -1 && key != findKey) { // doesn't meet conditions
+          goto exit_to_print;
+        }
+        if (max != -1 && ((condEQ && key >= max) || (!condEQ && key > max))) {
+          goto exit_to_print;
+        }
+        if (min != -1 && ((condEQ && key <= min) || (!condEQ && key < min))) {
+          goto exit_to_print;
+        }
+        // print the tuples that match conditions
+        if (attr == 1) {
+          fprintf(stdout, "%d\n", key);
+        }
+        count++;
+        continue; // Skip the reading from the disk and continue the while loop
       }
     }
+    else {
+      // hasVal, so need to read from disk
+      if ((rc = rf.read(rid, key, value)) < 0) {
+        fprintf(stderr, "Error: while reading a tuple from table %s\n", table.c_str());
+        goto exit_select;
+      }
+      // check the conditions on the tuple
+      for (unsigned i = 0; i < cond.size(); i++) {
+        // compute the difference between the tuple value and the condition value
+        switch (cond[i].attr) {
+        case 1:
+          diff = key - atoi(cond[i].value);
+          break;
+        case 2:
+          diff = strcmp(value.c_str(), cond[i].value);
+          break;
+        }
 
-    // the condition is met for the tuple.
-    // increase matching tuple counter
-    count++;
+        // skip the tuple if any condition is not met
+        switch (cond[i].comp) {
+        case SelCond::EQ:
+          if (diff != 0) {
+            if (cond[i].attr == 1) {
+              // Since keys are sorted, all tuples after won't match
+              goto exit_to_print;
+            }
+            continue; // If not key, then go on to next
+          }
+          break;
+        case SelCond::NE:
+          if (diff == 0) continue;
+          break;
+        case SelCond::GT:
+          if (diff <= 0) continue;
+          break;
+        case SelCond::LT:
+          if (diff >= 0) {
+            if (cond[i].attr == 1) {
+              // Keys are sorted, so rest of keys will be greater
+              goto exit_to_print;
+            }
+            continue;
+          }
+          break;
+        case SelCond::GE:
+          if (diff < 0) continue;
+          break;
+        case SelCond::LE:
+          if (diff >= 0) {
+            if (cond[i].attr == 1) {
+              // Keys are sorted, so rest of keys will be greater
+              goto exit_to_print;
+            }
+            continue;
+          }
+          break;
+        }
+      }
 
-    // print the tuple
-    switch (attr) {
-    case 1:  // SELECT key
-      fprintf(stdout, "%d\n", key);
-      break;
-    case 2:  // SELECT value
-      fprintf(stdout, "%s\n", value.c_str());
-      break;
-    case 3:  // SELECT *
-      fprintf(stdout, "%d '%s'\n", key, value.c_str());
-      break;
+      // the condition is met for the tuple.
+      // increase matching tuple counter
+      count++;
+
+      // print the tuple
+      switch (attr) {
+      case 1:  // SELECT key
+        fprintf(stdout, "%d\n", key);
+        break;
+      case 2:  // SELECT value
+        fprintf(stdout, "%s\n", value.c_str());
+        break;
+      case 3:  // SELECT *
+        fprintf(stdout, "%d '%s'\n", key, value.c_str());
+        break;
+      }
     }
-
-    // move to the next tuple
-    next_tuple:
-    ++rid;
   }
 
   // print matching tuple count if "select count(*)"
+  exit_to_print: // exit when conditions are no longer met
   if (attr == 4) {
     fprintf(stdout, "%d\n", count);
   }
@@ -139,6 +258,9 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
   // close the table file and return
   exit_select:
   rf.close();
+  if (indexOpened) {
+    index.close();
+  }
   return rc;
 }
 
@@ -153,7 +275,7 @@ RC SqlEngine::load(const string& table, const string& loadfile, bool index)
   BTreeIndex idx;
   if (index) {
     string indexname = table + ".idx";
-    idx.open(indexname, 'w');
+    rc = idx.open(indexname, 'w');
   }
 
   RecordId rid;
@@ -171,12 +293,12 @@ RC SqlEngine::load(const string& table, const string& loadfile, bool index)
       rc = rf.append(key, value, rid);
       // If index is true, insert corresponding tuple into B+Tree Index
       if (index) {
-        idx.insert(key, rid);
+        rc = idx.insert(key, rid);
       }
     }
-    f.close();
+    rc = f.close();
     if (index) {
-      idx.close(); // Close the file when done inserting index
+      rc = idx.close(); // Close the file when done inserting index
     }
   }
 
