@@ -148,6 +148,14 @@ RC SqlEngine::load(const string& table, const string& loadfile, bool index)
   // Create RecordFile named table.tbl in working directory
   string tablename = table + ".tbl";
   RecordFile rf(tablename, 'w'); // Will create and open RF
+
+  // Create BTreeIndex & file for index named table.idx in working directory
+  BTreeIndex idx;
+  if (index) {
+    string indexname = table + ".idx";
+    idx.open(indexname, 'w');
+  }
+
   RecordId rid;
   int key;
   string value;
@@ -157,13 +165,20 @@ RC SqlEngine::load(const string& table, const string& loadfile, bool index)
   ifstream f (loadfile.c_str());
 
   if (f.is_open()) {
-     while (getline(f, in)) {
+    while (getline(f, in)) {
       // Read tuple from input file use parseLoadLine
-       parseLoadLine(in, key, value);
-       rc = rf.append(key, value, rid);
-     }
-     f.close();
-   }
+      parseLoadLine(in, key, value);
+      rc = rf.append(key, value, rid);
+      // If index is true, insert corresponding tuple into B+Tree Index
+      if (index) {
+        idx.insert(key, rid);
+      }
+    }
+    f.close();
+    if (index) {
+      idx.close(); // Close the file when done inserting index
+    }
+  }
 
   return rc; // Come back to how to implement RC
 }
