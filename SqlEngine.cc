@@ -103,22 +103,25 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
     }
   }
 
+  string idx_file = table + ".idx";
+  rc = index.open(idx_file.c_str(), 'r');
+
   // Check if conditions are possible
-  if (min > max && max != -1 && min != -1)
+  if (min > max && max != -1 && min != -1) {
     goto exit_to_print;
-  if (min == max && !condEQ && max != -1 && min != -1)
+  }
+  if (min == max && !condEQ && max != -1 && min != -1) {
     goto exit_to_print;
+  }
 
   /* DON'T use index tree when:
     1. Index tree doesn't exist
     2. Not Equal condition on key
   */
 
-  string idx_file = table + ".idx";
-  rc = index.open(idx_file.c_str(), 'r');
-
   if (rc != 0 || (isNE && !hasVal)) {
     // Use table
+    cout << "Using table" << endl;
 
     // scan the table file from the beginning
     while (rid < rf.endRid()) {
@@ -192,6 +195,7 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
     // Use index
     IndexCursor cursor;
     indexOpened = true;
+    cout << "Using index" << endl;
 
     if (findKey != -1) {
       index.locate(findKey, cursor); // returns set cursor
@@ -205,6 +209,8 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
     else {
       index.locate(0, cursor); // start at root
     }
+    cout << "findkey: " << findKey << endl;
+    cout << "cursor: " << cursor.pid << ", " << cursor.eid << endl;
 
     // Read through index
     while (index.readForward(cursor, key, rid) == 0) {
@@ -226,81 +232,81 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
         count++;
         continue; // Skip the reading from the disk and continue the while loop
       }
-    }
-    else {
-      // hasVal, so need to read from disk
-      if ((rc = rf.read(rid, key, value)) < 0) {
-        fprintf(stderr, "Error: while reading a tuple from table %s\n", table.c_str());
-        goto exit_select;
-      }
-      // check the conditions on the tuple
-      for (unsigned i = 0; i < cond.size(); i++) {
-        // compute the difference between the tuple value and the condition value
-        switch (cond[i].attr) {
-        case 1:
-          diff = key - atoi(cond[i].value);
-          break;
-        case 2:
-          diff = strcmp(value.c_str(), cond[i].value);
-          break;
+      else {
+        // hasVal, so need to read from disk
+        if ((rc = rf.read(rid, key, value)) < 0) {
+          fprintf(stderr, "Error: while reading a tuple from table %s\n", table.c_str());
+          goto exit_select;
+        }
+        // check the conditions on the tuple
+        for (unsigned i = 0; i < cond.size(); i++) {
+          // compute the difference between the tuple value and the condition value
+          switch (cond[i].attr) {
+            case 1:
+              diff = key - atoi(cond[i].value);
+              break;
+            case 2:
+              diff = strcmp(value.c_str(), cond[i].value);
+              break;
+          }
+
+          // skip the tuple if any condition is not met
+          switch (cond[i].comp) {
+            case SelCond::EQ:
+              if (diff != 0) {
+                if (cond[i].attr == 1) {
+                  // Since keys are sorted, all tuples after won't match
+                  goto exit_to_print;
+                }
+                continue; // If not key, then go on to next
+              }
+              break;
+            case SelCond::NE:
+              if (diff == 0) continue;
+              break;
+            case SelCond::GT:
+              if (diff <= 0) continue;
+              break;
+            case SelCond::LT:
+              if (diff >= 0) {
+                if (cond[i].attr == 1) {
+                  // Keys are sorted, so rest of keys will be greater
+                  goto exit_to_print;
+                }
+                continue;
+              }
+              break;
+            case SelCond::GE:
+              if (diff < 0) continue;
+              break;
+            case SelCond::LE:
+              if (diff >= 0) {
+                if (cond[i].attr == 1) {
+                  // Keys are sorted, so rest of keys will be greater
+                  goto exit_to_print;
+                }
+                continue;
+              }
+              break;
+          }
         }
 
-        // skip the tuple if any condition is not met
-        switch (cond[i].comp) {
-        case SelCond::EQ:
-          if (diff != 0) {
-            if (cond[i].attr == 1) {
-              // Since keys are sorted, all tuples after won't match
-              goto exit_to_print;
-            }
-            continue; // If not key, then go on to next
-          }
+        // the condition is met for the tuple.
+        // increase matching tuple counter
+        count++;
+
+        // print the tuple
+        switch (attr) {
+        case 1:  // SELECT key
+          fprintf(stdout, "%d\n", key);
           break;
-        case SelCond::NE:
-          if (diff == 0) continue;
+        case 2:  // SELECT value
+          fprintf(stdout, "%s\n", value.c_str());
           break;
-        case SelCond::GT:
-          if (diff <= 0) continue;
-          break;
-        case SelCond::LT:
-          if (diff >= 0) {
-            if (cond[i].attr == 1) {
-              // Keys are sorted, so rest of keys will be greater
-              goto exit_to_print;
-            }
-            continue;
-          }
-          break;
-        case SelCond::GE:
-          if (diff < 0) continue;
-          break;
-        case SelCond::LE:
-          if (diff >= 0) {
-            if (cond[i].attr == 1) {
-              // Keys are sorted, so rest of keys will be greater
-              goto exit_to_print;
-            }
-            continue;
-          }
+        case 3:  // SELECT *
+          fprintf(stdout, "%d '%s'\n", key, value.c_str());
           break;
         }
-      }
-
-      // the condition is met for the tuple.
-      // increase matching tuple counter
-      count++;
-
-      // print the tuple
-      switch (attr) {
-      case 1:  // SELECT key
-        fprintf(stdout, "%d\n", key);
-        break;
-      case 2:  // SELECT value
-        fprintf(stdout, "%s\n", value.c_str());
-        break;
-      case 3:  // SELECT *
-        fprintf(stdout, "%d '%s'\n", key, value.c_str());
-        break;
       }
     }
   }
@@ -353,7 +359,7 @@ RC SqlEngine::load(const string& table, const string& loadfile, bool index)
         rc = idx.insert(key, rid);
       }
     }
-    rc = f.close();
+    f.close();
     if (index) {
       rc = idx.close(); // Close the file when done inserting index
     }
