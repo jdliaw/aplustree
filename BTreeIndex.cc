@@ -262,7 +262,7 @@ RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
     }
 
     rc = node.locateChildPtr(searchKey, pid);
-    if (rc != 0) {
+    if (rc != 0 && rc != RC_NO_SUCH_RECORD) {
       return rc;
     }
   }
@@ -276,7 +276,7 @@ RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
   rc = leaf_node.locate(searchKey, eid);
   cursor.pid = pid;
   cursor.eid = eid;
-  
+
   return rc;
 }
 
