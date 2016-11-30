@@ -70,7 +70,7 @@ RC BTreeIndex::close()
 
   memcpy(buffer, &rootPid, sizeof(PageId));
   memcpy(buffer + sizeof(PageId), &treeHeight, sizeof(int));
-  
+
   rc = pf.write(0, buffer); // Write rootPid/treeHeight to disk
 
   rc = pf.close();
@@ -179,7 +179,7 @@ RC BTreeIndex::insertHelper(int key, const RecordId& rid, PageId curPid, int cur
     int mPid = -1;
     int mKey = -1;
     rc = insertHelper(key, rid, childPid, curHeight+1, mPid, mKey); // Recursively traverse down the tree, following the ptrs
-    
+
     // Once movePid & moveKey modified, (base case reached), can push them up to parent
     if (mPid != -1 && mKey != -1) {
       // Parent = our current node right now. Insert into cur.
@@ -312,6 +312,10 @@ RC BTreeIndex::readForward(IndexCursor& cursor, int& key, RecordId& rid)
   }
   else {
     cursor.eid++;
+  }
+
+  if (cursor.pid == -1) {
+    return RC_INVALID_CURSOR; // End of index
   }
 
   return 0;

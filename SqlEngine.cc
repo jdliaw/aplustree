@@ -207,6 +207,8 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
     else {
       index.locate(0, cursor); // start at root
     }
+    // cout << "findKey: " << findKey << " hasVal: " << hasVal << endl;
+    // cout << "cursor: " << cursor.pid << ", " << cursor.eid << endl;
 
     // Read through index
     while (index.readForward(cursor, key, rid) == 0) {
@@ -230,6 +232,8 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
       }
       else {
         // hasVal, so need to read from disk
+        // cout << "sqlcursor: " << cursor.pid << ", " << cursor.eid << endl;
+        // cout << "key: " << key << " rid: " << rid.pid << endl;
         if ((rc = rf.read(rid, key, value)) < 0) {
           fprintf(stderr, "Error: while reading a tuple from table %s\n", table.c_str());
           goto exit_select;
@@ -254,7 +258,6 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
                   // Since keys are sorted, all tuples after won't match
                   goto exit_to_print;
                 }
-                // cout << "continue" << endl;
                 goto continue_while_loop; // If not key, then go on to next
               }
               break;
