@@ -70,7 +70,7 @@ RC BTreeIndex::close()
 
   memcpy(buffer, &rootPid, sizeof(PageId));
   memcpy(buffer + sizeof(PageId), &treeHeight, sizeof(int));
-
+  
   rc = pf.write(0, buffer); // Write rootPid/treeHeight to disk
 
   rc = pf.close();
@@ -115,14 +115,14 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
 
 RC BTreeIndex::insertHelper(int key, const RecordId& rid, PageId curPid, int curHeight, PageId& movePid, int& moveKey) {
   RC rc;
-
+    movePid = -1;
+    moveKey = -1;
   if (curHeight == treeHeight) { // Base case: inserting leaf node
     BTLeafNode leaf_node;
     rc = leaf_node.read(curPid, pf);
     if (rc != 0) {
       return rc;
     }
-
     rc = leaf_node.insert(key, rid);
     if (rc == 0) { // If successfully insert, write and return (no overflow)
       rc = leaf_node.write(curPid, pf);
@@ -142,7 +142,7 @@ RC BTreeIndex::insertHelper(int key, const RecordId& rid, PageId curPid, int cur
     moveKey = siblingKey; // sibling key needs to be pushed up to parent
 
     // set sibling next ptr
-    siblingLeaf.setNextNodePtr(leaf_node.getNextNodePtr());
+    siblingLeaf.setNextNodePtr(leaf_node.getNextNodePtr()); //TODO properly set this when we dont split the last node
     leaf_node.setNextNodePtr(endPid);
 
     // write to disk
@@ -158,9 +158,9 @@ RC BTreeIndex::insertHelper(int key, const RecordId& rid, PageId curPid, int cur
     // at height of 1, insertAndSplit needs to create a new root to push up to
     if (treeHeight == 1) {
       BTNonLeafNode root;
-      int root_key;
-      RecordId root_rid;      
-      leaf_node.readEntry(0, root_key, root_rid); // ***
+        int root_key;
+        RecordId root_rid;
+        leaf_node.readEntry(0, root_key, root_rid); // ***
       rc = root.initializeRoot(curPid, root_key, endPid, siblingKey);
       treeHeight++;
       rootPid = pf.endPid(); // Write new root to the next empty spot in pf
@@ -174,12 +174,12 @@ RC BTreeIndex::insertHelper(int key, const RecordId& rid, PageId curPid, int cur
     rc = node.read(curPid, pf);
 
     PageId childPid = -1;
-    rc = node.locateChildPtr(key, childPid); // returns childPid
+    rc = node.locateChildPtr(key, childPid); // returns childPid TODO: something now working here
 
     int mPid = -1;
     int mKey = -1;
     rc = insertHelper(key, rid, childPid, curHeight+1, mPid, mKey); // Recursively traverse down the tree, following the ptrs
-
+    
     // Once movePid & moveKey modified, (base case reached), can push them up to parent
     if (mPid != -1 && mKey != -1) {
       // Parent = our current node right now. Insert into cur.
@@ -215,10 +215,10 @@ RC BTreeIndex::insertHelper(int key, const RecordId& rid, PageId curPid, int cur
       // If push all the way to height == 1, need to make a new root again
       if (curHeight == 1) {
         BTNonLeafNode root;
-        int root_key;
-        PageId root_pid;
-        node.readNonLeafEntry(0, root_key, root_pid); // ***
-        rc = root.initializeRoot(curPid, root_key, endPid, siblingKey);
+          int root_key;
+          PageId root_pid;
+          node.readNonLeafEntry(0, root_key, root_pid); // ***
+          rc = root.initializeRoot(curPid, root_key, endPid, siblingKey);
         treeHeight++;
         rootPid = pf.endPid(); // Write new root to the next empty spot in pf
         rc = root.write(rootPid, pf);
@@ -317,6 +317,6 @@ RC BTreeIndex::readForward(IndexCursor& cursor, int& key, RecordId& rid)
   return 0;
 }
 
-
+// TODO: add these functions to your BTreeIndex.cc file for testing for the print function
 int BTreeIndex::getTreeHeight(void) { return treeHeight; }
 PageId BTreeIndex::getRootPid(void) { return rootPid; }

@@ -107,86 +107,15 @@ void print_index(PageId root_pid, int tree_height, std::string idx) {
 
 
     
-    // printf("Start printing for pid1: ");
-    // leaf.read(1, pf);
-    // leaf.printStuff();
     
-    // printf("Start printing for pid2: ");
-    // leaf.read(2, pf);
-    // leaf.printStuff();
+    int i = 1;
+    while(i != -1) {
+      leaf.read(i, pf);
+      leaf.printStuff();
+      i = leaf.getNextNodePtr();
+    }
+    
 
-    // printf("Start printing for pid3: ");
-    // root.read(3, pf);
-    // root.printStuff();
-    
-    // printf("Start printing for pid4: ");
-    // leaf.read(4, pf);
-    // leaf.printStuff();
-    
-    // printf("Start printing for pid5: ");
-    // leaf.read(5, pf);
-    // leaf.printStuff();
-
-    // printf("Start printing for pid74: ");
-    // root.read(74, pf);
-    // root.printStuff();
-
-    // int i = 1;
-    // while(i != -1) {
-    //   leaf.read(i, pf);
-    //   leaf.printStuff();
-    //   i = leaf.getNextNodePtr();
-    // }
-    
-//    leaf.readEntry(0, key, output);
-//    printf("Pid: 1\t");
-//    printf("Key: %d\t", key);
-//    printf("Record pid: %d\t", output.pid);
-//    printf("Record sid: %d\t", output.sid);
-//    printf("Sibling Node: %d\n", leaf.getNextNodePtr());
-//    
-//    while(leaf.getNextNodePtr() >= 0) {
-//        printf("Pid: %d\t", leaf.getNextNodePtr());
-//        leaf.read(leaf.getNextNodePtr(), pf);
-//        leaf.readEntry(0, key, output);
-//        printf("Key: %d\t", key);
-//        printf("Record pid: %d\t", output.pid);
-//        printf("Record sid: %d\t", output.sid);
-//        printf("Sibling Node: %d\n", leaf.getNextNodePtr());
-//    }
-//    
-//    
-//    BTNonLeafNode nonleaf;
-//    PageId o_pid;
-//    int curr_depth = 1;
-//    queue<PageId> pids;
-//    pids.push(root_pid);
-//    
-//    while (curr_depth < tree_height) {
-//        queue<PageId> next_pids;
-//        while (!pids.empty()) {
-//            nonleaf.read(pids.front(), pf);
-//            printf("Pid: %d\t", pids.front());
-//            printf("Number of Keys: %d\t", nonleaf.getKeyCount());
-////            nonleaf.readFirstPid(o_pid);
-////            printf("First pid: %d\t", o_pid);
-//            next_pids.push(o_pid);
-//            nonleaf.readNonLeafEntry(0, key, o_pid);
-//            printf("Key: %d\t", key);
-//            printf("Second pid: %d\t", o_pid);
-//            next_pids.push(o_pid);
-//            for (int i = 1; i < nonleaf.getKeyCount(); i++) {
-//                nonleaf.readNonLeafEntry(i, key, o_pid);
-//                printf("Key: %d\t", key);
-//                printf("Next pid: %d\t", o_pid);
-//                next_pids.push(o_pid);
-//            }
-//            pids.pop();
-//            printf("\n");
-//        }
-//        pids = next_pids;
-//        curr_depth++;
-//    }
     root.read(2660, pf);
     root.printStuff();
     pf.close();
@@ -284,12 +213,12 @@ int main()
 
   insertStuff(index);
     
-  // printf("RootPid: %d\n", index.getRootPid());
-  // printf("TreeHeight: %d\n", index.getTreeHeight());
+  printf("RootPid: %d\n", index.getRootPid());
+  printf("TreeHeight: %d\n", index.getTreeHeight());
 
 
   IndexCursor cursor;
-  index.locate(1232, cursor);
+  index.locate(50197, cursor);
   std::cout << "cursor.pid: " << cursor.pid << ", cursor.eid: " << cursor.eid << std::endl;      
   
   index.close();
