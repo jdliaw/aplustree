@@ -121,7 +121,6 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
 
   if (rc != 0 || (isNE && !hasVal)) {
     // Use table
-    cout << "Using table" << endl;
 
     // scan the table file from the beginning
     while (rid < rf.endRid()) {
@@ -195,9 +194,8 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
     // Use index
     IndexCursor cursor;
     indexOpened = true;
-    cout << "Using index" << endl;
 
-    if (findKey != -1) {
+    if (findKey != -1 && !hasVal) {
       index.locate(findKey, cursor); // returns set cursor
     }
     else if (min != -1 && condEQ) {
@@ -209,8 +207,6 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
     else {
       index.locate(0, cursor); // start at root
     }
-    cout << "findkey: " << findKey << endl;
-    cout << "cursor: " << cursor.pid << ", " << cursor.eid << endl;
 
     // Read through index
     while (index.readForward(cursor, key, rid) == 0) {
@@ -258,14 +254,15 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
                   // Since keys are sorted, all tuples after won't match
                   goto exit_to_print;
                 }
-                continue; // If not key, then go on to next
+                // cout << "continue" << endl;
+                goto continue_while_loop; // If not key, then go on to next
               }
               break;
             case SelCond::NE:
-              if (diff == 0) continue;
+              if (diff == 0) goto continue_while_loop;
               break;
             case SelCond::GT:
-              if (diff <= 0) continue;
+              if (diff <= 0) goto continue_while_loop;
               break;
             case SelCond::LT:
               if (diff >= 0) {
@@ -273,11 +270,11 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
                   // Keys are sorted, so rest of keys will be greater
                   goto exit_to_print;
                 }
-                continue;
+                goto continue_while_loop;
               }
               break;
             case SelCond::GE:
-              if (diff < 0) continue;
+              if (diff < 0) goto continue_while_loop;
               break;
             case SelCond::LE:
               if (diff >= 0) {
@@ -285,7 +282,7 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
                   // Keys are sorted, so rest of keys will be greater
                   goto exit_to_print;
                 }
-                continue;
+                goto continue_while_loop;
               }
               break;
           }
@@ -307,6 +304,9 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
           fprintf(stdout, "%d '%s'\n", key, value.c_str());
           break;
         }
+
+        continue_while_loop:
+          ;
       }
     }
   }

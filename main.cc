@@ -6,7 +6,7 @@
  * @author Junghoo "John" Cho <cho AT cs.ucla.edu>
  * @date 3/24/2008
  */
- 
+
 #include "Bruinbase.h"
 #include "SqlEngine.h"
 #include "BTreeIndex.h"
@@ -100,21 +100,21 @@ void print_index(PageId root_pid, int tree_height, std::string idx) {
     int key;
     PageFile pf;
     pf.open(idx, 'w');	// TODO: change this to the name of your index file
-    
+
     BTLeafNode leaf;
     BTNonLeafNode root;
     RecordId output;
 
 
-    
-    
+
+
     int i = 1;
     while(i != -1) {
       leaf.read(i, pf);
       leaf.printStuff();
       i = leaf.getNextNodePtr();
     }
-    
+
 
     root.read(2660, pf);
     root.printStuff();
@@ -129,26 +129,26 @@ void insertStuff(BTreeIndex &index) {
         rid.sid = i;
         index.insert(i, rid);
     }
-    
+
     for(i = 5; i < 85; i+=2) {
         rid.pid = i;
         rid.sid = i;
         index.insert(i, rid);
     }
-    
+
     for(; i < 143; i++) {
         rid.pid = i;
         rid.sid = i;
         index.insert(i, rid);
     }
-    
+
 
     for(; i < 150; i++) {
         rid.pid = i;
         rid.sid = i;
         index.insert(i, rid);
     }
-    
+
     rid.pid = 3;
     rid.sid = 3;
     index.insert(3, rid);
@@ -162,19 +162,19 @@ void insertStuff(BTreeIndex &index) {
         rid.sid = i;
         index.insert(i, rid);
     }
-    
+
     for(i = 302; i < 320; i+=2) {
         rid.pid = i;
         rid.sid = i;
         index.insert(i, rid);
     }
-    
+
     for(; i < 5000; i+=2) {
         rid.pid = i;
         rid.sid = i;
         index.insert(i, rid);
     }
-    
+
     for(i = 303; i < 385; i+=2) {
         rid.pid = i;
         rid.sid = i;
@@ -183,7 +183,7 @@ void insertStuff(BTreeIndex &index) {
 
     rid.pid = i;
     rid.sid = i;
-    index.insert(i, rid);    
+    index.insert(i, rid);
     for(; i < 50001; i+=2) {
         rid.pid = i;
         rid.sid = i;
@@ -205,28 +205,28 @@ void insertStuff(BTreeIndex &index) {
 int main()
 {
 //  BTLeafTest():
-  // BTNonLeafTest();  
-  BTreeIndex index;
+  // BTNonLeafTest();
+  // BTreeIndex index;
 
-  std::string file = "test1.idx";
-  index.open(file, 'w');	// TODO: change this to the name of your index file
+  // std::string file = "test1.idx";
+  // index.open(file, 'w');	// TODO: change this to the name of your index file
 
-  insertStuff(index);
-    
-  printf("RootPid: %d\n", index.getRootPid());
-  printf("TreeHeight: %d\n", index.getTreeHeight());
+  // insertStuff(index);
+
+  // printf("RootPid: %d\n", index.getRootPid());
+  // printf("TreeHeight: %d\n", index.getTreeHeight());
 
 
-  IndexCursor cursor;
-  index.locate(50197, cursor);
-  std::cout << "cursor.pid: " << cursor.pid << ", cursor.eid: " << cursor.eid << std::endl;      
-  
-  index.close();
+  // IndexCursor cursor;
+  // index.locate(50197, cursor);
+  // std::cout << "cursor.pid: " << cursor.pid << ", cursor.eid: " << cursor.eid << std::endl;
 
-  //   //print function is called here
-   print_index(index.getRootPid(), index.getTreeHeight(), file);
+  // index.close();
+
+  // //   //print function is called here
+  //  print_index(index.getRootPid(), index.getTreeHeight(), file);
   // run the SQL engine taking user commands from standard input (console).
-  // SqlEngine::run(stdin);
+  SqlEngine::run(stdin);
 
   return 0;
 }
